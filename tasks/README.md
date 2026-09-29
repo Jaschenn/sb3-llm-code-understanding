@@ -4,13 +4,13 @@ GitHub Issue 是任务的唯一事实来源；本文件仅列出建议创建的�
 
 | ID | 任务 | 建议负责人 | 复核人 | 验收产物 |
 |---|---|---|---|---|
-| T01 | 项目地图与推荐阅读顺序 | 成员 3 | 成员 1 | 模块地图、代码定位 |
-| T02 | 核心对象与类图 | 成员 8 | 成员 2 | 类图、对象词典、关系证据 |
-| T03 | `predict()` 端到端调用链 | 成员 1 | 成员 4 | 调用链图、运行日志 |
-| T04 | `learn()` 框架级训练链 | 成员 1 | 成员 8 | 控制流图、范围说明 |
-| T05 | 环境检查与失败路径 | 成员 7 | 成员 4 | 失败脚本、异常输出、测试证据 |
-| T06 | 实际运行与可复现实验 | 成员 4 | 成员 7 | 脚本、环境信息、日志 |
-| T07 | AI 证据日志与反思 | 成员 5 | 成员 2 | AI 日志、至少一个纠错案例 |
-| T08 | Issue/PR/commit 维护观察 | 成员 6 | 成员 3 | 维护观察报告、链接证据 |
+| [T01](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/1) | 项目地图与推荐阅读顺序 | 成员 3 | 成员 1 | 模块地图、代码定位 |
+| [T02](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/2) | 核心对象与类图 | 成员 8 | 成员 2 | 类图、对象词典、关系证据 |
+| [T03](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/3) | `predict()` 端到端调用链 | 成员 1 | 成员 4 | 调用链图、运行日志 |
+| [T04](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/4) | `learn()` 框架级训练链 | 成员 1 | 成员 8 | 控制流图、范围说明 |
+| [T05](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/5) | 环境检查与失败路径 | 成员 7 | 成员 4 | 失败脚本、异常输出、测试证据 |
+| [T06](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/6) | 实际运行与可复现实验 | 成员 4 | 成员 7 | 脚本、环境信息、日志 |
+| [T07](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/7) | AI 证据日志与反思 | 成员 5 | 成员 2 | AI 日志、至少一个纠错案例 |
+| [T08](https://github.com/Jaschenn/sb3-llm-code-understanding/issues/8) | Issue/PR/commit 维护观察 | 成员 6 | 成员 3 | 维护观察报告、链接证据 |
 
 创建 Issue 后，按 [协作规则](../CONTRIBUTING.md) 认领，并把 Issue 链接替换进本表。
