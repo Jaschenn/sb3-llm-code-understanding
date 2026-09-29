@@ -1,33 +1,16 @@
-# 实训报告写作骨架
+# 实训报告目录
 
-## 1. 项目简介
+正文按章节分文件，最后由组长统一排版与交叉引用。每章的事实结论应指向[上游源码基线](../project-baseline.md)和[证据矩阵](../evidence/evidence-matrix.md)。
 
-项目定位、用户、问题、边界，以及选择 SB3 的原因。
+| 章节 | 文件 | 主负责人 |
+|---|---|---|
+| 1 项目简介 | [01-introduction.md](01-introduction.md) | 成员 1，参考 T01/T08 |
+| 2 项目地图 | [02-project-map.md](02-project-map.md) | T01 |
+| 3 领域对象 | [03-domain-objects.md](03-domain-objects.md) | T02 |
+| 4 调用链 | [04-call-chains.md](04-call-chains.md) | T03、T04；组长整合 |
+| 5 测试与边界 | [05-tests-boundaries.md](05-tests-boundaries.md) | T05、T06；T05 整合 |
+| 6 AI 证据日志 | [06-ai-evidence.md](06-ai-evidence.md) | T07 |
+| 7 维护观察 | [07-maintenance.md](07-maintenance.md) | T08 |
+| 8 学习反思 | [08-reflection.md](08-reflection.md) | T07 收集，全员反馈，组长定稿 |
 
-## 2. 项目地图与阅读顺序
-
-展示仓库目录、模块职责和从入口到核心模块的阅读路线。每项说明附代码证据。
-
-## 3. 核心领域对象与类图
-
-聚焦 `PPO`、`OnPolicyAlgorithm`、`BaseAlgorithm`、`BasePolicy`、`RolloutBuffer`、`VecEnv`、Gymnasium `Env` 与 `Callback`。标明继承、持有和调用关系。
-
-## 4. 业务调用链
-
-主链建议为 `env.reset() → model.predict() → policy → env.step()`；训练辅链为 `learn() → collect_rollouts() → RolloutBuffer → train()`。须包含至少一条失败路径。
-
-## 5. 测试与边界
-
-用现有测试反推环境契约、预测输入和保存加载等边界，并展示至少一个自建失败用例。
-
-## 6. 证据矩阵与 AI 证据日志
-
-链接 [证据矩阵](../evidence/evidence-matrix.md) 和 [AI 日志](../evidence/ai-log.md)。
-
-## 7. 维护观察
-
-选择一个 Issue/PR/commit，说明问题、设计取舍、代码或测试变化。
-
-## 8. 学习反思
-
-说明 AI 带来的效率、错误类型、验证手段和团队协作改进。
+共同修改的章节（第 4、5、8 章）应先分别提交 Issue 证据文件；正文整合由表中的负责人集中提交，避免并行编辑同一段落。

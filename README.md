@@ -10,18 +10,18 @@
 
 ## 协作入口
 
-1. 从 [任务看板](tasks/README.md) 选择未认领任务。
-2. 在 GitHub 创建/打开对应 Issue，将自己设为 **Assignee**，并评论“认领”。
+1. 从 [任务列表](tasks/README.md) 打开 `status: todo` 的 Issue。
+2. 将自己设为 **Assignee**，评论“认领”，并把标签改为 `status: claimed`。
 3. 从 `main` 建立分支：`task/<issue号>-<英文短名>`。
 4. 提交材料和证据，发起 PR；PR 描述必须包含 `Closes #<issue号>`。
-5. 由非提交者复核证据后合并。
+5. 由非提交者复核证据后合并；Issue 随 PR 自动关闭。
 
-详见 [协作规则](CONTRIBUTING.md) 和 [报告结构](docs/report/README.md)。
+开始分析前先固定[上游源码基线](docs/project-baseline.md)。详见[协作规则](CONTRIBUTING.md)和[报告结构](docs/report/README.md)。
 
 ## 目录
 
 - `docs/report/`：最终报告草稿与图表说明。
-- `docs/evidence/`：证据矩阵、AI 使用日志。
+- `docs/evidence/`：按 Issue 独立记录的证据与 AI 日志；汇总文件由指定负责人整理。
 - `tasks/`：任务清单、分工和验收标准。
 - `scripts/`：可重复执行的验证脚本及说明。
 - `artifacts/`：图、运行日志和截图等可引用材料。

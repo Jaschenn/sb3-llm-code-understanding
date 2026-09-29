@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: 小组协作规则
-    url: ../../CONTRIBUTING.md
+    url: https://github.com/Jaschenn/sb3-llm-code-understanding/blob/main/CONTRIBUTING.md
     about: 请先阅读任务认领、证据和审阅规则。

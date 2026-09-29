@@ -1,3 +1,3 @@
 # 图表材料
 
-保存项目地图、领域类图、调用链图的源文件和导出图。文件名采用 `<编号>-<主题>.<扩展名>`，例如 `C01-predict-chain.mmd`、`C01-predict-chain.png`。
+每个 Issue 使用独立目录，例如 `issue-03/predict-chain.mmd` 和 `issue-03/predict-chain.png`。保留可编辑源文件；报告引用导出图，并在证据文件中解释图上主要关系的源码依据。
