@@ -1,0 +1,24 @@
+name: "AI 发现：待核验结论"
+description: "记录一条由 AI 提出的、必须经实际证据核验的结论"
+title: "[AI]: "
+labels: ["ai-evidence", "status: todo"]
+body:
+  - type: textarea
+    id: prompt
+    attributes:
+      label: Prompt 与上下文
+    validations:
+      required: true
+  - type: textarea
+    id: answer
+    attributes:
+      label: AI 的关键结论
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 验证计划与结果
+      description: 必须用源码、测试或实际运行验证；记录 AI 正确、错误或条件不充分之处。
+    validations:
+      required: true

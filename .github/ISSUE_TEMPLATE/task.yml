@@ -1,0 +1,32 @@
+name: "任务：项目分析"
+description: "认领一项项目地图、领域对象、调用链或报告任务"
+title: "[Task]: "
+labels: ["task", "status: todo"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标与范围
+      description: 这项任务要回答哪个问题？明确不做什么。
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: 交付物与验收标准
+      description: 写明要提交的 Markdown、图、脚本、日志或报告段落。
+      value: "- [ ] \n- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 预期证据
+      description: 至少列出源码、测试、运行或维护历史中的两类。
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: 认领声明
+      description: 认领人填“认领。计划在 YYYY-MM-DD 前提交：…”。

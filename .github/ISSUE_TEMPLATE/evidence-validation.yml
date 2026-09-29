@@ -1,0 +1,23 @@
+name: "验证：证据与边界"
+description: "验证 AI 或人工结论，记录源码、测试和运行证据"
+title: "[Verify]: "
+labels: ["verification", "status: todo"]
+body:
+  - type: textarea
+    id: claim
+    attributes:
+      label: 待验证结论
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: 验证计划
+      description: 源码定位、测试或运行命令；说明预期结果。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 实际结果
+      description: 完成后填写命令、输出位置和结论（支持/否定/需限定）。
