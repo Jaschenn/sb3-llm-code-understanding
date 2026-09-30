@@ -1,0 +1,433 @@
+{
+  "algorithm": "PPO",
+  "batch_size": 128,
+  "checkpoints": [
+    {
+      "evaluation": {
+        "episodes": [
+          {
+            "reward": 126.0,
+            "seed": 100,
+            "steps": 126,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 90.0,
+            "seed": 101,
+            "steps": 90,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 90.0,
+            "seed": 102,
+            "steps": 90,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 82.0,
+            "seed": 103,
+            "steps": 82,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 105.0,
+            "seed": 104,
+            "steps": 105,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 99.0,
+            "seed": 105,
+            "steps": 99,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 79.0,
+            "seed": 106,
+            "steps": 79,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 110.0,
+            "seed": 107,
+            "steps": 110,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 93.0,
+            "seed": 108,
+            "steps": 93,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 107.0,
+            "seed": 109,
+            "steps": 107,
+            "terminated": true,
+            "truncated": false
+          }
+        ],
+        "max_steps": 126,
+        "mean_steps": 98.1,
+        "median_steps": 96.0,
+        "min_steps": 79
+      },
+      "training_timesteps": 0,
+      "training_wall_seconds_since_previous": 0.0
+    },
+    {
+      "evaluation": {
+        "episodes": [
+          {
+            "reward": 91.0,
+            "seed": 100,
+            "steps": 91,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 52.0,
+            "seed": 101,
+            "steps": 52,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 48.0,
+            "seed": 102,
+            "steps": 48,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 74.0,
+            "seed": 103,
+            "steps": 74,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 134.0,
+            "seed": 104,
+            "steps": 134,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 146.0,
+            "seed": 105,
+            "steps": 146,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 96.0,
+            "seed": 106,
+            "steps": 96,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 58.0,
+            "seed": 107,
+            "steps": 58,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 102.0,
+            "seed": 108,
+            "steps": 102,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 48.0,
+            "seed": 109,
+            "steps": 48,
+            "terminated": true,
+            "truncated": false
+          }
+        ],
+        "max_steps": 146,
+        "mean_steps": 84.9,
+        "median_steps": 82.5,
+        "min_steps": 48
+      },
+      "training_timesteps": 4096,
+      "training_wall_seconds_since_previous": 0.508
+    },
+    {
+      "evaluation": {
+        "episodes": [
+          {
+            "reward": 90.0,
+            "seed": 100,
+            "steps": 90,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 54.0,
+            "seed": 101,
+            "steps": 54,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 54.0,
+            "seed": 102,
+            "steps": 54,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 77.0,
+            "seed": 103,
+            "steps": 77,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 127.0,
+            "seed": 104,
+            "steps": 127,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 124.0,
+            "seed": 105,
+            "steps": 124,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 146.0,
+            "seed": 106,
+            "steps": 146,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 61.0,
+            "seed": 107,
+            "steps": 61,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 127.0,
+            "seed": 108,
+            "steps": 127,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 51.0,
+            "seed": 109,
+            "steps": 51,
+            "terminated": true,
+            "truncated": false
+          }
+        ],
+        "max_steps": 146,
+        "mean_steps": 91.1,
+        "median_steps": 83.5,
+        "min_steps": 51
+      },
+      "training_timesteps": 8192,
+      "training_wall_seconds_since_previous": 0.47
+    },
+    {
+      "evaluation": {
+        "episodes": [
+          {
+            "reward": 500.0,
+            "seed": 100,
+            "steps": 500,
+            "terminated": false,
+            "truncated": true
+          },
+          {
+            "reward": 500.0,
+            "seed": 101,
+            "steps": 500,
+            "terminated": false,
+            "truncated": true
+          },
+          {
+            "reward": 500.0,
+            "seed": 102,
+            "steps": 500,
+            "terminated": false,
+            "truncated": true
+          },
+          {
+            "reward": 388.0,
+            "seed": 103,
+            "steps": 388,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 454.0,
+            "seed": 104,
+            "steps": 454,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 365.0,
+            "seed": 105,
+            "steps": 365,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 493.0,
+            "seed": 106,
+            "steps": 493,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 408.0,
+            "seed": 107,
+            "steps": 408,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 500.0,
+            "seed": 108,
+            "steps": 500,
+            "terminated": false,
+            "truncated": true
+          },
+          {
+            "reward": 447.0,
+            "seed": 109,
+            "steps": 447,
+            "terminated": true,
+            "truncated": false
+          }
+        ],
+        "max_steps": 500,
+        "mean_steps": 455.5,
+        "median_steps": 473.5,
+        "min_steps": 365
+      },
+      "training_timesteps": 16384,
+      "training_wall_seconds_since_previous": 0.933
+    },
+    {
+      "evaluation": {
+        "episodes": [
+          {
+            "reward": 159.0,
+            "seed": 100,
+            "steps": 159,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 194.0,
+            "seed": 101,
+            "steps": 194,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 172.0,
+            "seed": 102,
+            "steps": 172,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 147.0,
+            "seed": 103,
+            "steps": 147,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 155.0,
+            "seed": 104,
+            "steps": 155,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 147.0,
+            "seed": 105,
+            "steps": 147,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 152.0,
+            "seed": 106,
+            "steps": 152,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 163.0,
+            "seed": 107,
+            "steps": 163,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 150.0,
+            "seed": 108,
+            "steps": 150,
+            "terminated": true,
+            "truncated": false
+          },
+          {
+            "reward": 174.0,
+            "seed": 109,
+            "steps": 174,
+            "terminated": true,
+            "truncated": false
+          }
+        ],
+        "max_steps": 194,
+        "mean_steps": 161.3,
+        "median_steps": 157.0,
+        "min_steps": 147
+      },
+      "training_timesteps": 32768,
+      "training_wall_seconds_since_previous": 1.863
+    }
+  ],
+  "deterministic_evaluation": true,
+  "environment": "CartPole-v1",
+  "evaluation_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+  ],
+  "n_epochs": 4,
+  "n_steps": 128,
+  "training_seed": 42
+}
