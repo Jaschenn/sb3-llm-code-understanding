@@ -1,0 +1,31 @@
+%%{init: {'theme': 'base', 'flowchart': {'curve': 'basis'}}}%%
+flowchart TB
+  subgraph I[继承关系]
+    PPO[PPO] -->|R01| OPA[OnPolicyAlgorithm] -->|R02| BA[BaseAlgorithm]
+    ACP[ActorCriticPolicy] -->|R03| BP[BasePolicy] -->|R04| BM[BaseModel]
+    CNN[ActorCriticCnnPolicy] -->|R05 待验证| ACP
+    MI[MultiInputActorCriticPolicy] -->|R06| ACP
+    RB[RolloutBuffer] -->|R07| BB[BaseBuffer]
+    DRB[DictRolloutBuffer] -->|R08| RB
+    DVE[DummyVecEnv] -->|R09| VE[VecEnv]
+    VEW[VecEnvWrapper] -->|R10 待验证| VE
+  end
+  subgraph H[实例保存的引用]
+    M[PPO 实例 / model] -->|R11 policy| P[ActorCriticPolicy 系列]
+    M -->|R12 rollout_buffer| B[RolloutBuffer 系列]
+    M -->|R13 env| V[VecEnv]
+    D[DummyVecEnv] -->|R14 envs| G[Gymnasium Env]
+    W[VecEnvWrapper] -->|R15 venv 待验证| V
+    C[BaseCallback] -->|R16 model| M
+  end
+  subgraph K[主要调用]
+    PR[model.predict] -. R17 policy.predict .-> P
+    CR[collect_rollouts] -. R18 policy 前向 .-> P
+    CR -. R19 step .-> V
+    CR -. R20 reset/add/compute .-> B
+    CR -. R21 hooks .-> C
+    T[PPO.train] -. R22 get .-> B
+    T -. R23 evaluate/optimizer .-> P
+    D -. R24 step/reset .-> G
+  end
+  MP[MlpPolicy] -. 类别名 .-> ACP

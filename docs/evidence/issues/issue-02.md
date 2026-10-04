@@ -31,7 +31,7 @@
 
 ## 类图箭头与源码证据
 
-[DOT 源文件](../../../artifacts/diagrams/issue-02/domain-objects.dot) · [SVG 导出图](../../../artifacts/diagrams/issue-02/domain-objects.svg)。图中的蓝色菱形只表示保存引用，不表示独占所有权；R 编号与下表一一对应。链接均固定在基线 commit。
+[Mermaid 源文件](../../../artifacts/diagrams/issue-02/domain-objects.mmd)。图中的引用边只表示保存引用，不表示独占所有权；R 编号与下表一一对应。链接均固定在基线 commit。
 
 | 边 | 关系 | 源码 |
 |---|---|---|

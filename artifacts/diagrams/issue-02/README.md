@@ -1,7 +1,7 @@
 # T02 类图
 
-`domain-objects.dot` 是可编辑 Graphviz 文件，`domain-objects.svg` 是导出图。空心三角指向父类；蓝色菱形表示引用；绿色虚线表示调用。R01–R24 对应 [Issue #2 证据](../../../docs/evidence/issues/issue-02.md)。
+`domain-objects.mmd` 是可编辑 Mermaid 源文件。报告正文直接嵌入 Mermaid 图，GitHub 会原生渲染；R01–R24 对应 [Issue #2 证据](../../../docs/evidence/issues/issue-02.md)。
 
 ```bash
-dot -Tsvg domain-objects.dot -o domain-objects.svg
+npx --yes @mermaid-js/mermaid-cli -i domain-objects.mmd -o domain-objects.svg
 ```
