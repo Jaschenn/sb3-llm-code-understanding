@@ -1,0 +1,20 @@
+[project]
+name = "intro"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "jas", email = "cchenzyy@icloud.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "gymnasium[classic-control]>=1.3.0",
+    "stable-baselines3>=2.9.0",
+]
+
+[project.scripts]
+intro = "intro:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
