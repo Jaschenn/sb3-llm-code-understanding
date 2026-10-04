@@ -1,0 +1,45 @@
+{
+  "commit": "7cfb4dd6055e74b5caa4ed4d6777492209946e26",
+  "ppo_mro": [
+    "PPO",
+    "OnPolicyAlgorithm",
+    "BaseAlgorithm",
+    "ABC",
+    "object"
+  ],
+  "policy": "ActorCriticPolicy",
+  "buffer": "RolloutBuffer",
+  "env": "DummyVecEnv",
+  "callback_events": [
+    "start",
+    "rollout_start",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "rollout_end",
+    "rollout_start",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "step",
+    "rollout_end",
+    "end"
+  ],
+  "early_stop": [
+    "start",
+    "rollout_start",
+    "step",
+    "end"
+  ],
+  "dict_buffer": "DictRolloutBuffer",
+  "result": "PASS"
+}

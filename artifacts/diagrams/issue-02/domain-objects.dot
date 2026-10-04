@@ -1,0 +1,19 @@
+digraph DomainObjects {
+  graph [rankdir=LR, labelloc=t, fontsize=18, label="SB3 PPO domain objects (fixed commit 7cfb4dd)\nHollow triangle: inheritance; blue diamond: stored reference; dashed green: call"];
+  node [shape=box, style="rounded,filled", fillcolor="#f1f5f9", fontname=Arial]; edge [fontname=Arial];
+  PPO -> OnPolicyAlgorithm [arrowhead=empty,label="R01"]; OnPolicyAlgorithm -> BaseAlgorithm [arrowhead=empty,label="R02"];
+  ActorCriticPolicy -> BasePolicy [arrowhead=empty,label="R03"]; BasePolicy -> BaseModel [arrowhead=empty,label="R04"];
+  ActorCriticCnnPolicy -> ActorCriticPolicy [arrowhead=empty,label="R05 pending runtime"]; MultiInputActorCriticPolicy -> ActorCriticPolicy [arrowhead=empty,label="R06"];
+  RolloutBuffer -> BaseBuffer [arrowhead=empty,label="R07"]; DictRolloutBuffer -> RolloutBuffer [arrowhead=empty,label="R08"];
+  DummyVecEnv -> VecEnv [arrowhead=empty,label="R09"]; VecEnvWrapper -> VecEnv [arrowhead=empty,label="R10 pending runtime"];
+  PPO -> ActorCriticPolicy [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R11 policy"];
+  PPO -> RolloutBuffer [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R12 rollout_buffer"];
+  PPO -> VecEnv [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R13 env"];
+  DummyVecEnv -> GymEnv [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R14 envs"];
+  VecEnvWrapper -> VecEnv [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R15 venv"];
+  BaseCallback -> PPO [dir=both,arrowtail=odiamond,arrowhead=none,color="#2563eb",label="R16 model"];
+  BaseAlgorithmPredict [label="BaseAlgorithm.predict"] -> ActorCriticPolicy [style=dashed,color="#15803d",label="R17 predict"];
+  CollectRollouts -> ActorCriticPolicy [style=dashed,color="#15803d",label="R18 forward/values"]; CollectRollouts -> VecEnv [style=dashed,color="#15803d",label="R19 step"]; CollectRollouts -> RolloutBuffer [style=dashed,color="#15803d",label="R20 fill"]; CollectRollouts -> BaseCallback [style=dashed,color="#15803d",label="R21 hooks"];
+  PPOTrain [label="PPO.train"] -> RolloutBuffer [style=dashed,color="#15803d",label="R22 get"]; PPOTrain -> ActorCriticPolicy [style=dashed,color="#15803d",label="R23 evaluate/optimizer"]; DummyVecEnv -> GymEnv [style=dashed,color="#15803d",label="R24 step/reset"];
+  MlpPolicy [label="MlpPolicy alias"] -> ActorCriticPolicy [style=dotted,label="alias"];
+}
