@@ -25,19 +25,19 @@ flowchart TB
     C[BaseCallback] -->|R16 model| M
   end
   subgraph K[主要调用]
-    PR[model.predict] -. R17 policy.predict .-> P
-    CR[collect_rollouts] -. R18 policy 前向 .-> P
-    CR -. R19 step .-> V
-    CR -. R20 reset/add/compute .-> B
-    CR -. R21 hooks .-> C
-    T[PPO.train] -. R22 get .-> B
-    T -. R23 evaluate/optimizer .-> P
-    D -. R24 step/reset .-> G
+    PR[model.predict] -->|R17 policy.predict| P
+    CR[collect_rollouts] -->|R18 policy 前向| P
+    CR -->|R19 step| V
+    CR -->|R20 reset/add/compute| B
+    CR -->|R21 hooks| C
+    T[PPO.train] -->|R22 get| B
+    T -->|R23 evaluate/optimizer| P
+    D -->|R24 step/reset| G
   end
-  MP[MlpPolicy] -. 类别名 .-> ACP
+  MP[MlpPolicy] -->|类别名| ACP
 ```
 
-实线表示继承或保存引用，虚线表示调用；“待验证”表示缺少专项运行证据。R01–R24 可在证据文件逐条核对，图不表示执行时序。
+图按继承、保存的引用和调用分组；“待验证”表示缺少专项运行证据。R01–R24 可在证据文件逐条核对，图不表示执行时序。
 
 `PPO → OnPolicyAlgorithm → BaseAlgorithm` 是继承链；一个 PPO 实例复用基类行为。BaseAlgorithm 提供环境包装、预测委托和 callback 初始化，OnPolicyAlgorithm 创建 policy/buffer 并编排采样，PPO 实现 `train`。MlpPolicy 是 ActorCriticPolicy 的类别名；CnnPolicy 和 MultiInputPolicy 分别指向其 CNN 与多输入子类。policy 同时负责动作、value、log probability，并持有 optimizer。
 

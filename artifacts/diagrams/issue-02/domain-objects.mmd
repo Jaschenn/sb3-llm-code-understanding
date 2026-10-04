@@ -19,13 +19,13 @@ flowchart TB
     C[BaseCallback] -->|R16 model| M
   end
   subgraph K[主要调用]
-    PR[model.predict] -. R17 policy.predict .-> P
-    CR[collect_rollouts] -. R18 policy 前向 .-> P
-    CR -. R19 step .-> V
-    CR -. R20 reset/add/compute .-> B
-    CR -. R21 hooks .-> C
-    T[PPO.train] -. R22 get .-> B
-    T -. R23 evaluate/optimizer .-> P
-    D -. R24 step/reset .-> G
+    PR[model.predict] -->|R17 policy.predict| P
+    CR[collect_rollouts] -->|R18 policy 前向| P
+    CR -->|R19 step| V
+    CR -->|R20 reset/add/compute| B
+    CR -->|R21 hooks| C
+    T[PPO.train] -->|R22 get| B
+    T -->|R23 evaluate/optimizer| P
+    D -->|R24 step/reset| G
   end
-  MP[MlpPolicy] -. 类别名 .-> ACP
+  MP[MlpPolicy] -->|类别名| ACP
