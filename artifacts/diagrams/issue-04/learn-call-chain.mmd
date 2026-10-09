@@ -1,0 +1,60 @@
+%%% T04 Issue #4 — learn() 框架级训练调用链（Mermaid flowchart）
+%%% 源码基线：stable-baselines3 commit 7cfb4dd
+flowchart TD
+    A[用户 model.learn(total_timesteps=128)] --> B
+    B[PPO.learn ppo/ppo.py:L302] -->|"super().learn()"| C
+    C[OnPolicyAlgorithm.learn<br>common/on_policy_algorithm.py:L300] --> D
+    D[BaseAlgorithm._setup_learn<br>common/base_class.py:L382]
+    D --> D1[① time.time_ns → start_time]
+    D --> D2[② deque ep_info_buffer / ep_success_buffer]
+    D --> D3[③ env.reset → _last_obs, _last_episode_starts=ones]
+    D --> D4[④ configure_logger + _init_callback]
+    D --> E{num_timesteps < total?}
+    E -- YES --> F
+    E -- NO --> END["callback.on_training_end()  return self"]
+
+    F[collect_rollouts(env, callback, rollout_buffer,<br>n_rollout_steps=n_steps) L162] --> F1
+    F1["① policy.set_training_mode(False)"] --> F2
+    F2["② rollout_buffer.reset()"] --> F3
+    F3["③ callback.on_rollout_start()"] --> F4
+    F4{"while n_steps < rollout_steps"} --> F4a[obs_as_tensor(_last_obs)]
+    F4a --> F4b["with no_grad: a,v,lp = policy(obs)"]
+    F4b --> F4c[Box: clip/unscale → clipped_actions]
+    F4c --> F4d[env.step(clipped_actions) →<br>new_obs, rewards, dones, infos]
+    F4d --> F4e["num_timesteps += n_envs  callback.on_step()"]
+    F4e --> F4f["_update_info_buffer(infos, dones) <br>（把 Monitor 的 r/l 存入 deque）"]
+    F4f --> F4g["TimeLimit.truncated 特殊处理：<br>rewards[idx] += gamma * V(terminal_obs)"]
+    F4g --> F4h[rollout_buffer.add(obs,a,r,ep_starts,v,lp)<br>buffers.py:L440]
+    F4h --> F4i["_last_obs = new_obs<br>_last_episode_starts = dones"]
+    F4i --> F4
+    F4 -- NO --> F5["with no_grad: last_values = policy.predict_values(new_obs)"]
+    F5 --> F6[rollout_buffer.compute_returns_and_advantage<br>(last_values, dones) buffers.py:L403 — GAE]
+    F6 --> F7["callback.on_rollout_end()  return True"]
+    F7 --> G
+
+    G["iteration++<br>_update_current_progress_remaining()"] --> H
+    H{"iteration % log_interval == 0"} -->|YES| H1["dump_logs(iteration):<br>ep_rew_mean / ep_len_mean / fps / time_elapsed …"]
+    H1 --> I
+    H -->|NO| I
+
+    I[PPO.train()<br>ppo/ppo.py:L184] --> I1["① policy.set_training_mode(True)<br>② _update_learning_rate(optimizer)"]
+    I1 --> I2["for epoch in range(n_epochs):"]
+    I2 --> I3["for rollout_data in rollout_buffer.get(batch_size):"]
+    I3 --> I3a["policy.evaluate_actions(obs, actions)<br>→ values, log_prob, entropy"]
+    I3a --> I3b["advantages = normalize(advantages)"]
+    I3b --> I3c["ratio = exp(log_prob - old_log_prob)<br>policy_loss = -min(A·r̃, A·clip(r̃,1±ε)).mean()"]
+    I3c --> I3d["value_loss = MSE(returns, clip_V? clipV : V)"]
+    I3d --> I3e["entropy_loss = -mean(entropy)"]
+    I3e --> I3f["loss = pg + ent_coef·H + vf_coef·Vloss"]
+    I3f --> I3g["approx_kl = mean(exp(Δ)-1 - Δ)<br>> target_kl? 早停（可选）"]
+    I3g --> I3h["zero_grad() → loss.backward() →<br>clip_grad_norm_(max_grad_norm) → step()"]
+    I3h --> I3
+    I3 --> I2
+    I2 --> I4["_n_updates += epoch<br>explained_variance(values, returns)"]
+    I4 --> I5["logger.record(train/...)<br>pg_loss / value_loss / approx_kl / clip_fraction / std …"]
+    I5 --> E
+
+    style END fill:#d4f5d4,stroke:#0a7d0a
+    style I fill:#fde0e0,stroke:#8a0d0d
+    style F fill:#e7e7ff,stroke:#212199
+    style D fill:#fff4d9,stroke:#804a00
