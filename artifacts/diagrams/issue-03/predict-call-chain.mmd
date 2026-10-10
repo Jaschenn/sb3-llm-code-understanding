@@ -1,0 +1,45 @@
+%%% T03 Issue #3 — predict() 端到端调用链（Mermaid sequenceDiagram）
+%%% 源码基线：stable-baselines3 commit 7cfb4dd
+%%% 建议在 VS Code 里装 Mermaid 预览插件，或复制到 mermaid.live 渲染为 PNG/SVG
+sequenceDiagram
+    actor U as 用户脚本
+    participant BA as BaseAlgorithm.predict<br>(common/base_class.py:536)
+    participant BP as BasePolicy.predict<br>(common/policies.py:331)
+    participant BP_OTT as BasePolicy.obs_to_tensor<br>(common/policies.py:236)
+    participant ACP_P as ActorCriticPolicy._predict<br>(common/policies.py:709)
+    participant ACP_GD as ActorCriticPolicy.get_distribution<br>(common/policies.py:743)
+    participant FE as features_extractor<br>(BaseModel.extract_features L122)
+    participant MLP as mlp_extractor.forward_actor<br>(ActorCriticPolicy L751)
+    participant AN as action_net + CategoricalDistribution<br>(L691 / L697)
+    participant CD as CategoricalDistribution<br>.get_actions(det=True)
+    participant ENV as Gymnasium Env.step()
+
+    U->>U: obs, info = env.reset()<br># shape=(4,) for CartPole
+    Note over U: 注意 tuple (obs,info)<br>不要直接喂给 model.predict()
+    U->>BA: model.predict(obs, deterministic=True)
+    BA->>BP: self.policy.predict(obs, None, None, det=True)
+    BP->>BP: set_training_mode(False)<br>关 dropout / BN
+    BP->>BP: 若 obs 是 tuple(obs, info) → 抛 ValueError<br>(tests/test_predict.py test_mixing_gym_vecenv_api L121)
+    BP->>BP_OTT: obs → obs_tensor + vectorized?
+    BP_OTT-->>BP: obs_tensor shape=(1,4),<br>vectorized=False
+    BP->>ACP_P: with th.no_grad():<br>self._predict(obs_tensor, det=True)
+    ACP_P->>ACP_GD: self.get_distribution(obs_tensor)
+    ACP_GD->>FE: extract_features(obs, pi_features_extractor)
+    FE-->>ACP_GD: features shape=(1, feature_dim)
+    ACP_GD->>MLP: forward_actor(features)
+    MLP-->>ACP_GD: latent_pi shape=(1, 64)
+    ACP_GD->>AN: action_net(latent_pi) → logits
+    AN-->>ACP_GD: distribution = Categorical(logits)
+    ACP_GD-->>ACP_P: distribution
+    ACP_P->>CD: .get_actions(deterministic=True)
+    CD-->>ACP_P: actions shape=(1,) (int64),<br>deterministic=True 即 argmax(logits)
+    ACP_P-->>BP: actions Tensor
+    BP->>BP: actions.cpu().numpy().reshape((-1, action_space.shape))
+    alt action_space 是 Box
+        BP->>BP: squash_output ? unscale_action : clip(low,high)
+    end
+    BP->>BP: vectorized=False → squeeze(batch) → shape=()
+    BP-->>BA: final_action ndarray scalar + state=None
+    BA-->>U: action
+    U->>ENV: env.step(int(action))
+    ENV-->>U: new_obs, reward, terminated, truncated, info
