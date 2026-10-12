@@ -34,11 +34,26 @@ stable_baselines3/
 └── td3/                  # TD3算法
 ```
 
+### 仓库目录与证据入口
+
+这里的 `stable_baselines3/` 是上游仓库中的 Python 包。完整仓库还包括以下入口，不能把包目录当作整个项目：
+
+| 目录/入口 | 职责 | 固定基线下的代表文件 |
+|---|---|---|
+| `README.md` | 项目介绍、安装方式、算法支持表和最小使用示例 | [README.md](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/README.md#L11) |
+| `stable_baselines3/` | 算法、策略、缓冲区与环境包装实现 | [__init__.py](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/__init__.py#L1) |
+| `tests/` | 验证预测接口、训练流程和边界行为 | [test_predict.py::test_predict](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_predict.py#L62)；[test_run.py::test_ppo](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_run.py#L49) |
+| `docs/` | 用户指南和开发者设计说明；帮助区分公开接口与内部实现 | [docs/guide/developer.md](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/docs/guide/developer.md#L14) |
+| `.github/` | GitHub 协作模板与自动化流程；CI 执行 lint、文档构建、类型检查和测试 | [.github/workflows/ci.yml](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/.github/workflows/ci.yml#L1) |
+| `scripts/` | 测试和 Docker 运行辅助脚本 | [scripts/run_tests.sh](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/scripts/run_tests.sh#L1) |
+
+职责依据是上表文件的内容；“先读 README 与开发指南，再从包入口追到具体算法，最后用测试核对行为”是本任务推荐的阅读路线。
+
 ---
 
 ## 2. 项目地图
 
-### 1.1 架构图
+### 2.1 架构图
 
 展示SB3的类继承关系：
 
@@ -46,15 +61,15 @@ stable_baselines3/
 graph TD
     A[BaseAlgorithm<br/>基类] --> B[OnPolicyAlgorithm<br/>on-policy基类]
     A --> C[OffPolicyAlgorithm<br/>off-policy基类]
-    
+
     B --> D[PPO]
     B --> E[A2C]
-    
+
     C --> F[DQN]
     C --> H[SAC]
     C --> I[TD3]
     I --> G[DDPG]
-    
+
     style A fill:#e1f5ff,stroke:#333,stroke-width:2px
     style B fill:#fff4e6,stroke:#333,stroke-width:2px
     style C fill:#fff4e6,stroke:#333,stroke-width:2px
@@ -66,6 +81,8 @@ graph TD
     style I fill:#f3e5f5,stroke:#333,stroke-width:2px
 ```
 
+[可编辑源文件](../../../artifacts/diagrams/issue-01/architecture.mmd) · [导出图](../../../artifacts/diagrams/issue-01/01architecture.png)
+
 **图说明**：
 - 🔵 **蓝色（BaseAlgorithm）**：顶层基类，定义所有算法的统一接口（learn、predict、save、load）
 - 🟡 **黄色（中间层）**：按数据使用方式分为on-policy和off-policy两类
@@ -76,83 +93,64 @@ graph TD
 
 ---
 
-### 1.2 模块协作地图
+### 2.2 模块协作地图
 
 展示各模块在训练和预测时的协作关系：
 
 ```mermaid
 graph TD
-    A[用户代码]
-    B[具体算法<br/>PPO/DQN/SAC]
-    C[BaseAlgorithm<br/>统一接口]
-    
-    D[Policy<br/>策略网络]
-    E[Buffer<br/>数据缓冲]
-    F[VecEnv<br/>环境包装]
-    G[Callback]
-    
-    H[Gymnasium]
-    I[PyTorch]
-    
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    C --> F
-    C -.-> G
-    
-    F --> H
-    D --> I
-    E --> I
-    
-    style A fill:#e8f5e9,stroke:#333,stroke-width:2px
-    style B fill:#fff4e6,stroke:#333,stroke-width:2px
-    style C fill:#e1f5ff,stroke:#333,stroke-width:2px
-    style D fill:#f3e5f5,stroke:#333,stroke-width:2px
-    style E fill:#f3e5f5,stroke:#333,stroke-width:2px
-    style F fill:#f3e5f5,stroke:#333,stroke-width:2px
-    style G fill:#fff9c4,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
-    style H fill:#f5f5f5,stroke:#333,stroke-width:2px
-    style I fill:#f5f5f5,stroke:#333,stroke-width:2px
+    U[用户代码] -->|learn| A[具体算法<br/>PPO / A2C / DQN / SAC / TD3 / DDPG]
+    A -->|委托训练循环| T[OnPolicyAlgorithm / OffPolicyAlgorithm<br/>learn / collect_rollouts]
+    A -->|train: 采样| B[Buffer<br/>RolloutBuffer / ReplayBuffer]
+    A -->|train: 更新网络| P[Policy<br/>策略网络]
+    T -->|动作决策| P
+    T -->|写入交互数据| B
+    T -->|step| V[VecEnv]
+    T -->|调用钩子| C[Callback]
+    T -->|记录训练指标| L[Logger]
+    U -->|predict: PPO 等| X[BaseAlgorithm.predict<br/>转交策略预测]
+    X -->|policy.predict| P
+    V --> E[Gymnasium 环境]
+    P --> F[PyTorch]
+
+    style U fill:#e8f5e9,stroke:#333,stroke-width:2px
+    style A fill:#fff4e6,stroke:#333,stroke-width:2px
+    style T fill:#e1f5ff,stroke:#333,stroke-width:2px
+    style X fill:#e1f5ff,stroke:#333,stroke-width:2px
+    style P fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style V fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style C fill:#fff9c4,stroke:#333,stroke-width:2px
+    style L fill:#fff9c4,stroke:#333,stroke-width:2px
+    style E fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style F fill:#f5f5f5,stroke:#333,stroke-width:2px
 ```
+
+[可编辑源文件](../../../artifacts/diagrams/issue-01/module-collaboration.mmd) · [导出图](../../../artifacts/diagrams/issue-01/02module-collaboration.png)
 
 **图说明**：
 - 🟢 **用户代码**：调用SB3的API（如`model.learn()`）
 - 🟡 **具体算法**：用户选择的算法（PPO、DQN等）
-- 🔵 **BaseAlgorithm**：协调各模块的核心控制器
+- 🔵 **公共骨架**：OnPolicy/OffPolicy 负责训练调度，BaseAlgorithm 提供公共预测入口
 - 🟣 **核心模块**：Policy负责决策，Buffer存储数据，VecEnv管理环境
-- 🟨 **辅助模块**：Callback监控训练过程（虚线表示可选）
+- 🟨 **辅助模块**：Callback 提供训练钩子，Logger 记录指标
 - ⚪ **外部依赖**：Gymnasium提供环境接口，PyTorch实现神经网络
 
-**解释**：用户的简单调用，经过BaseAlgorithm协调，被分发到各个专业模块完成复杂的强化学习训练。
+**协作流程与范围**：
+
+1. **用户代码** 创建算法实例，并调用 `learn()` 或 `predict()`。
+2. **训练调度** 位于 `OnPolicyAlgorithm` / `OffPolicyAlgorithm`：`learn()` 调用 `collect_rollouts()`，后者使用 Policy 决策、通过 VecEnv 与环境交互、写入 Buffer，并调用 Callback 钩子；`learn()` 再调用具体算法的 `train()` 更新网络。
+3. **具体算法的 `train()`** 从 Buffer 采样，计算损失并优化 Policy；中间层和具体算法通过 Logger 记录指标。
+4. **预测入口** 对 PPO 等沿用基类实现的算法，是 `BaseAlgorithm.predict()` → `policy.predict()`；DQN 覆盖了算法层的 `predict()`，加入探索逻辑。
+5. **BaseAlgorithm** 提供公共初始化、环境包装、回调/日志准备、保存与加载，以及抽象 `learn()` 接口；它不实现训练循环，也不负责创建和读写训练 Buffer。
+6. **底层依赖**：Gymnasium 提供环境接口，PyTorch 实现神经网络。
+
+图中的箭头表示所标注的方法调用或数据操作，不表示类继承。Callback 是训练循环的一部分，即使用户没有传入自定义回调，也会初始化回调对象。
+
 
 ---
 
-## 2. 项目基本情况
-
-**统计数据**：
-```bash
-# 文件数量
-find stable_baselines3/stable_baselines3 -type f -name "*.py" | wc -l
-# 结果：64个Python文件
-
-# 代码行数
-find stable_baselines3/stable_baselines3 -type f -name "*.py" -exec wc -l {} + | tail -1
-# 结果：15,693行代码
-```
-
-**目录结构**：
-```
-stable_baselines3/
-├── __init__.py           # 入口文件
-├── common/               # 公共模块（共享代码）
-├── ppo/                  # PPO算法
-├── a2c/                  # A2C算法
-├── dqn/                  # DQN算法
-├── ddpg/                 # DDPG算法
-├── sac/                  # SAC算法
-└── td3/                  # TD3算法
-```
+**源码依据**：[BaseAlgorithm.learn（抽象接口）](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L511)；[OnPolicyAlgorithm._setup_model](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/on_policy_algorithm.py#L115)；[OnPolicyAlgorithm.collect_rollouts](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/on_policy_algorithm.py#L162)；[OnPolicyAlgorithm.learn](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/on_policy_algorithm.py#L300)；[OffPolicyAlgorithm._setup_model](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/off_policy_algorithm.py#L177)；[OffPolicyAlgorithm.collect_rollouts](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/off_policy_algorithm.py#L526)；[PPO.train](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/ppo/ppo.py#L184)；[BaseAlgorithm.predict](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L537)。设计说明另见 [开发指南](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/docs/guide/developer.md#L20)。
 
 ---
 
@@ -189,6 +187,8 @@ stable_baselines3/
 | `predict()` | L537-L557 | [L537](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L537) |
 | `load()` | L643 | [L643](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L643) |
 | `save()` | L819 | [L819](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L819) |
+
+以下为省略参数和类型的结构示意，完整签名以固定源码链接为准：
 
 ```python
 class BaseAlgorithm(ABC):          # L67
@@ -331,3 +331,26 @@ BaseAlgorithm（基类）
 - `ppo/policies.py` 并非"通常为空"，而是定义了 MlpPolicy 等别名
 - `collect_rollouts()` 范围应为 L162-L268（原写 L162-L250）
 - 中间层的 `train()` 只是接口，实现位于各算法
+
+## 7. PR #16 review 修正
+
+- 训练协作图和说明改为 OnPolicy/OffPolicy 调度、具体算法更新、BaseAlgorithm 公共预测入口，并补充固定源码及开发指南依据。
+- 补齐 `tests/`、`docs/`、`.github/`、`scripts/` 的职责和代表文件；阅读路线增加开发指南及顺序理由。
+- 调试示例定义独立评估环境，显式配置 `tensorboard_log`，区分事件日志与 `evaluations.npz`。
+- 两张图的 Mermaid 源文件与 PNG 统一放在 `artifacts/diagrams/issue-01/`，源文件与两份文档的 Mermaid 块保持一致。
+
+### 示例运行验证
+
+验证脚本：[scripts/issue_01_validate_examples.py](../../../scripts/issue_01_validate_examples.py)。脚本提取报告中的预测练习和 TensorBoard 示例并原样执行，在临时目录检查输出，退出后清理运行材料。
+
+按[基线准备说明](../../project-baseline.md)检出并安装上游源码、激活虚拟环境后，在本协作仓库根目录运行（将路径替换为自己的上游目录）：
+
+```bash
+PYTHONPATH=/path/to/stable-baselines3 uv run --no-project --active --with tensorboard python scripts/issue_01_validate_examples.py
+```
+
+本次验证：macOS 27.0.1 / arm64，Python 3.13.5，PyTorch 2.14.0，Gymnasium 1.3.0；源码为固定 commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26`，包版本为 `2.9.2a0`。示例未设随机种子，只验证接口、形状与日志产物，不以动作取值或回报衡量训练效果。
+
+结果：原始观察形状 `(4,)`，预处理后形状 `(1, 4)`，预测成功；生成一个 TensorBoard 事件文件，包含 `eval/mean_reward` 和 `rollout/ep_rew_mean`，同时生成 `best_model.zip` 和 `evaluations.npz`。独立评估环境使用 Monitor 包装。
+
+另外核对了两份文档的 Mermaid 块与图源完全一致、本地文件链接可达、固定源码链接的文件和行号存在；两张 PNG 已重新渲染并检查可读性。图表导出命令见[图表说明](../../../artifacts/diagrams/issue-01/README.md)。

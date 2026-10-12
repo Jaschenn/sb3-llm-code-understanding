@@ -1,0 +1,21 @@
+graph TD
+    A[BaseAlgorithm<br/>基类] --> B[OnPolicyAlgorithm<br/>on-policy基类]
+    A --> C[OffPolicyAlgorithm<br/>off-policy基类]
+
+    B --> D[PPO]
+    B --> E[A2C]
+
+    C --> F[DQN]
+    C --> H[SAC]
+    C --> I[TD3]
+    I --> G[DDPG]
+
+    style A fill:#e1f5ff,stroke:#333,stroke-width:2px
+    style B fill:#fff4e6,stroke:#333,stroke-width:2px
+    style C fill:#fff4e6,stroke:#333,stroke-width:2px
+    style D fill:#e8f5e9,stroke:#333,stroke-width:2px
+    style E fill:#e8f5e9,stroke:#333,stroke-width:2px
+    style F fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style G fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style H fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style I fill:#f3e5f5,stroke:#333,stroke-width:2px
