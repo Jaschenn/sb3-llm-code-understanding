@@ -1,0 +1,26 @@
+graph TD
+    U[用户代码] -->|learn| A[具体算法<br/>PPO / A2C / DQN / SAC / TD3 / DDPG]
+    A -->|委托训练循环| T[OnPolicyAlgorithm / OffPolicyAlgorithm<br/>learn / collect_rollouts]
+    A -->|train: 采样| B[Buffer<br/>RolloutBuffer / ReplayBuffer]
+    A -->|train: 更新网络| P[Policy<br/>策略网络]
+    T -->|动作决策| P
+    T -->|写入交互数据| B
+    T -->|step| V[VecEnv]
+    T -->|调用钩子| C[Callback]
+    T -->|记录训练指标| L[Logger]
+    U -->|predict: PPO 等| X[BaseAlgorithm.predict<br/>转交策略预测]
+    X -->|policy.predict| P
+    V --> E[Gymnasium 环境]
+    P --> F[PyTorch]
+
+    style U fill:#e8f5e9,stroke:#333,stroke-width:2px
+    style A fill:#fff4e6,stroke:#333,stroke-width:2px
+    style T fill:#e1f5ff,stroke:#333,stroke-width:2px
+    style X fill:#e1f5ff,stroke:#333,stroke-width:2px
+    style P fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style V fill:#f3e5f5,stroke:#333,stroke-width:2px
+    style C fill:#fff9c4,stroke:#333,stroke-width:2px
+    style L fill:#fff9c4,stroke:#333,stroke-width:2px
+    style E fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style F fill:#f5f5f5,stroke:#333,stroke-width:2px
