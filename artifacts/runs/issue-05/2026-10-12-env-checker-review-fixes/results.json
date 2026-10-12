@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "date": "2026-10-12T22:51:13",
+    "command": "/Users/jaschen/sb3-llm-code-understanding/intro/.venv/bin/python scripts/issue_05_env_checker_failures.py --output-dir artifacts/runs/issue-05/2026-10-12-env-checker-review-fixes",
+    "cwd": "/private/tmp/pr19-fix",
+    "sb3_commit": "7cfb4dd6055e74b5caa4ed4d6777492209946e26",
+    "sb3_source_root": "/private/tmp/pr19-sb3-baseline",
+    "env_checker_source": "/private/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py",
+    "sb3_source_clean": true,
+    "python": "3.13.5 (main, Jun 12 2025, 12:22:43) [Clang 20.1.4 ]",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "torch": "2.14.0",
+    "gymnasium": "1.3.0",
+    "numpy": "2.5.3",
+    "stable_baselines3": "2.9.2a0",
+    "seed_policy": "check_env 内部固定使用 reset(seed=0) 与 action_space.sample()；本实验的失败均为确定性触发，不依赖随机种子"
+  },
+  "results": [
+    {
+      "case_id": "F01",
+      "category": "A 环境类型",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L482-484",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "Your environment must inherit from the gymnasium.Env class cf. https://gymnasium.farama.org/api/env/",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 482, in check_env\n    assert isinstance(\n           ~~~~~~~~~~^\n        env, gym.Env\n        ^^^^^^^^^^^^\n    ), \"Your environment must inherit from the gymnasium.Env class cf. https://gymnasium.farama.org/api/env/\"\n    ^\nAssertionError: Your environment must inherit from the gymnasium.Env class cf. https://gymnasium.farama.org/api/env/\n"
+    },
+    {
+      "case_id": "F02",
+      "category": "A 空间声明",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L424-427",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The action space must inherit from gymnasium.spaces (cf. https://gymnasium.farama.org/api/spaces/)",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 487, in check_env\n    _check_spaces(env)\n    ~~~~~~~~~~~~~^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 427, in _check_spaces\n    assert isinstance(env.action_space, spaces.Space), f\"The action space must inherit from gymnasium.spaces ({gym_spaces})\"\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: The action space must inherit from gymnasium.spaces (cf. https://gymnasium.farama.org/api/spaces/)\n"
+    },
+    {
+      "case_id": "F03",
+      "category": "B API 签名",
+      "expected": "TypeError",
+      "source_ref": "env_checker.py:L493-496",
+      "warn": true,
+      "outcome": "失败：TypeError",
+      "exception_type": "TypeError",
+      "exception_message": "The reset() method must accept a `seed` parameter",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 494, in check_env\n    env.reset(seed=0)\n    ~~~~~~~~~^^^^^^^^\nTypeError: ResetWithoutSeedEnv.reset() got an unexpected keyword argument 'seed'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 496, in check_env\n    raise TypeError(\"The reset() method must accept a `seed` parameter\") from e\nTypeError: The reset() method must accept a `seed` parameter\n"
+    },
+    {
+      "case_id": "F04",
+      "category": "C 返回值结构",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L367-370",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The `step()` method must return five values: obs, reward, terminated, truncated, info. Actual: 4 values returned.",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 367, in _check_returned_values\n    assert len(data) == 5, (\n           ^^^^^^^^^^^^^^\nAssertionError: The `step()` method must return five values: obs, reward, terminated, truncated, info. Actual: 4 values returned.\n"
+    },
+    {
+      "case_id": "F05",
+      "category": "C 返回值结构",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L337-338",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "`reset()` must return a tuple (obs, info)",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 337, in _check_returned_values\n    assert isinstance(reset_returns, tuple), \"`reset()` must return a tuple (obs, info)\"\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: `reset()` must return a tuple (obs, info)\n"
+    },
+    {
+      "case_id": "F06",
+      "category": "C 返回值结构",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L401",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The reward returned by `step()` must be a float",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 401, in _check_returned_values\n    assert isinstance(reward, (float, int)), \"The reward returned by `step()` must be a float\"\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: The reward returned by `step()` must be a float\n"
+    },
+    {
+      "case_id": "F07",
+      "category": "C 返回值结构",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L402",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The `terminated` signal must be a boolean",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 402, in _check_returned_values\n    assert isinstance(terminated, bool), \"The `terminated` signal must be a boolean\"\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^\nAssertionError: The `terminated` signal must be a boolean\n"
+    },
+    {
+      "case_id": "F08",
+      "category": "D 观测内容",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L285-303",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The observation returned by the `reset()` method does not match the bounds of the given observation space Box(0.0, 1.0, (3,), float32). \n1 invalid indices: \nExpected: 0.0 <= obs[1] <= 1.0, actual value: 1.5 \n",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 361, in _check_returned_values\n    _check_obs(obs, observation_space, \"reset\")\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 303, in _check_obs\n    raise AssertionError(message)\nAssertionError: The observation returned by the `reset()` method does not match the bounds of the given observation space Box(0.0, 1.0, (3,), float32). \n1 invalid indices: \nExpected: 0.0 <= obs[1] <= 1.0, actual value: 1.5 \n\n"
+    },
+    {
+      "case_id": "W09",
+      "category": "E 警告边界",
+      "expected": "UserWarning + 跳过返回值检查",
+      "source_ref": "env_checker.py:L156-162, L531-532",
+      "warn": true,
+      "outcome": "通过（未抛异常）",
+      "exception_type": null,
+      "exception_message": null,
+      "warnings": [
+        "Sequence observation space is not supported by Stable-Baselines3. You can pad your observation to have a fixed size instead.\nNote: The checks for returned values are skipped."
+      ],
+      "traceback": ""
+    },
+    {
+      "case_id": "W10",
+      "category": "E 警告边界",
+      "expected": "UserWarning，不失败",
+      "source_ref": "env_checker.py:L510-518",
+      "warn": true,
+      "outcome": "通过（未抛异常）",
+      "exception_type": null,
+      "exception_message": null,
+      "warnings": [
+        "We recommend you to use a symmetric and normalized Box action space (range=[-1, 1]) cf. https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html"
+      ],
+      "traceback": ""
+    },
+    {
+      "case_id": "F11",
+      "category": "E 警告边界",
+      "expected": "AssertionError",
+      "source_ref": "env_checker.py:L520-523",
+      "warn": true,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "Continuous action space must have a finite lower and upper bound",
+      "warnings": [
+        "We recommend you to use a symmetric and normalized Box action space (range=[-1, 1]) cf. https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html"
+      ],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 521, in check_env\n    assert np.all(\n           ~~~~~~^\n        np.isfinite(np.array([action_space.low, action_space.high]))\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ), \"Continuous action space must have a finite lower and upper bound\"\n    ^\nAssertionError: Continuous action space must have a finite lower and upper bound\n"
+    },
+    {
+      "case_id": "F12",
+      "category": "E 警告边界",
+      "expected": "AssertionError，无警告",
+      "source_ref": "env_checker.py:L500-502, L535",
+      "warn": false,
+      "outcome": "失败：AssertionError",
+      "exception_type": "AssertionError",
+      "exception_message": "The observation returned by `reset()` method must be a numpy array",
+      "warnings": [],
+      "traceback": "Traceback (most recent call last):\n  File \"/private/tmp/pr19-fix/scripts/issue_05_env_checker_failures.py\", line 203, in run_case\n    check_env(factory(), warn=warn)\n    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 535, in check_env\n    _check_returned_values(env, observation_space, action_space)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 361, in _check_returned_values\n    _check_obs(obs, observation_space, \"reset\")\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/pr19-sb3-baseline/stable_baselines3/common/env_checker.py\", line 270, in _check_obs\n    assert isinstance(obs, np.ndarray), f\"The observation returned by `{method_name}()` method must be a numpy array\"\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^\nAssertionError: The observation returned by `reset()` method must be a numpy array\n"
+    }
+  ]
+}

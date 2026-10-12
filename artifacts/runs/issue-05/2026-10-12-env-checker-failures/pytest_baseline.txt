@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+collecting ... collected 25 items
+
+tests/test_env_checker.py::test_check_env_dict_action PASSED             [  4%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple0] PASSED [  8%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple1] PASSED [ 12%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple2] PASSED [ 16%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple3] PASSED [ 20%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple4] PASSED [ 24%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple5] PASSED [ 28%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple6] PASSED [ 32%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple7] PASSED [ 36%]
+tests/test_env_checker.py::test_check_env_detailed_error[reset-obs_tuple8] PASSED [ 40%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple0] PASSED [ 44%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple1] PASSED [ 48%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple2] PASSED [ 52%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple3] PASSED [ 56%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple4] PASSED [ 60%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple5] PASSED [ 64%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple6] PASSED [ 68%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple7] PASSED [ 72%]
+tests/test_env_checker.py::test_check_env_detailed_error[step-obs_tuple8] PASSED [ 76%]
+tests/test_env_checker.py::test_check_env_single_step_env PASSED         [ 80%]
+tests/test_env_checker.py::test_check_env_graph_space PASSED             [ 84%]
+tests/test_env_checker.py::test_check_env_sequence_obs[CustomEnv] PASSED [ 88%]
+tests/test_env_checker.py::test_check_env_sequence_obs[SequenceInDictEnv] PASSED [ 92%]
+tests/test_env_checker.py::test_check_env_sequence_tuple PASSED          [ 96%]
+tests/test_env_checker.py::test_check_env_oneof PASSED                   [100%]
+
+============================== 25 passed in 1.81s ==============================
