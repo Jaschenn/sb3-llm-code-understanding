@@ -2,7 +2,7 @@
 
 - `architecture.mmd`：类继承关系，DDPG 继承 TD3。
 - `module-collaboration.mmd`：训练调度、算法更新与公共预测入口。DQN 自己覆盖了 `predict()`；图中的公共预测路径适用于 PPO 等沿用基类实现的算法。
-- 两份文档中的 Mermaid 块与对应源文件相同；修改时同步更新，再导出 PNG。
+- Mermaid 源文件是图表的编辑入口；修改后重新导出 PNG，报告引用导出图，证据文件引用此目录。
 
 在协作仓库根目录重新导出（本次使用 Mermaid CLI 12.0.0、白色背景、2 倍分辨率）：
 
