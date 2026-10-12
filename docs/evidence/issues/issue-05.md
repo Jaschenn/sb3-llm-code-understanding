@@ -14,7 +14,7 @@
 | C-05-04 | `reset()` 必须接受 `seed` 参数，否则抛 `TypeError`（运行 F03） | 已支持 | 源码 L493-496；运行 summary.md F03 |
 | C-05-05 | `reset()` 必须返回 `(obs, info)` 二元组、`step()` 必须返回 5 元组，且 reward 为 float/int、terminated/truncated 为 bool、info 为 dict，否则 `AssertionError`（运行 F04-F07） | 已支持 | 源码 L337-340、L367-370、L401-404；运行 summary.md F04-F07 |
 | C-05-06 | `Box` 观测超出声明的边界时，`AssertionError` 报错带逐索引明细（运行 F08）；该路径已被上游测试覆盖 | 已支持 | 源码 L285-303；测试 `test_env_checker.py:L56-143`（`test_check_env_detailed_error`，本地 25 passed）；运行 summary.md F08 |
-| C-05-07 | `Sequence`/`Graph`/`OneOf` 观测空间：`check_env()` 仅发警告并**跳过全部返回值检查**后直接返回——环境可能带病"通过"检查（运行 W09：返回非法 obs 仍通过） | 需限定 | 源码 L147-169、L531-532；运行 summary.md W09 |
+| C-05-07 | 在 `warn=True` 下，`Sequence`/`Graph`/`OneOf` 观测空间会触发警告并**跳过全部返回值检查**后直接返回（W09）；`warn=False` 不设置跳过标志，同一非法 Sequence 观测会断言失败（F12） | 需限定 | 源码 L147-169、L500-502、L531-535；原始运行 W09；[复核运行 W09/F12](../../../artifacts/runs/issue-05/2026-10-12-env-checker-review-fixes/summary.md) |
 | C-05-08 | `Box` 动作空间：非对称/未归一化仅警告（运行 W10）；含无限边界时在 `warn=True` 下 `AssertionError`（运行 F11） | 已支持 | 源码 L510-523；运行 summary.md W10、F11 |
 | C-05-09 | 上游测试未覆盖的失败路径：非 `gym.Env` 类型、非 `Space` 动作空间、`reset()` 无 `seed`、`step()` 返回 4 元组、reward/terminated 类型错误、无限动作边界——由本任务运行实验首次给出可复现证据 | 已支持 | 测试文件全文比对（`test_env_checker.py`，273 行）；运行 summary.md F01-F07、F11 |
 | C-05-10 | `skip_render_check` 默认为 `True`，`render` 检查默认不执行（源码默认参数 L467、分支 L538-539） | 已支持 | 源码 L467、L538-539 |
@@ -45,7 +45,7 @@
 
 **C-05-06 观测边界**：源码 [L285-303](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L285-L303)，`invalid_indices` 逐索引列出。运行 F08（声明 `Box(0,1)` 却返回 `[0.5, 1.5, 0.5]`）→ 报错含 `Expected: 0.0 <= obs[1] <= 1.0, actual value: 1.5`。上游测试 `test_check_env_detailed_error`（[test_env_checker.py:L56-143](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_env_checker.py#L56-L143)）以 18 个参数化用例覆盖越界/dtype/shape/多空格场景，本地运行 25 passed（见 `pytest_baseline.txt`）。三类证据齐。
 
-**C-05-07 静默通过边界（需限定）**：源码 [L156-162](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L156-L162)（Sequence 警告并置 `should_skip=True`）、[L531-532](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L531-L532)（skip 后直接 return）。运行 W09：`SequenceObsEnv` 的 `reset()`/`step()` **故意返回字符串** `"not-an-observation"`，`check_env` 仍然"通过"，仅警告 `checks for returned values are skipped`。含义：`check_env` 通过 ≠ 环境正确；对变长观测空间，检查器主动放弃验证。此边界同时解释了为什么 Graph/OneOf 场景在测试中只断言警告而不断言失败（[test_env_checker.py:L212-273](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_env_checker.py#L212-L273)）。
+**C-05-07 静默通过边界（需限定）**：源码 [L156-162](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L156-L162)（Sequence 警告并置 `should_skip=True`）、[L500-502](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L500-L502)（仅 `warn=True` 时调用空间支持性检查）、[L531-535](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L531-L535)（skip 后直接 return，否则检查返回值）。运行 W09：`SequenceObsEnv` 的 `reset()`/`step()` **故意返回字符串** `"not-an-observation"`，`check_env(..., warn=True)` 仍然"通过"，仅警告 `checks for returned values are skipped`。复核运行 F12 使用同一环境但设置 `warn=False`，无警告且抛出 `AssertionError: The observation returned by reset() method must be a numpy array`。含义：`check_env` 通过 ≠ 环境正确；跳过返回值检查的结论仅适用于 `warn=True`，不应推论 `warn=False` 能完整支持这些空间。此边界同时解释了为什么 Graph/OneOf 场景在测试中以 `warn=True` 断言警告（[test_env_checker.py:L212-273](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_env_checker.py#L212-L273)）。
 
 **C-05-08 动作空间边界**：源码 [L510-518](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L510-L518)（非对称仅警告）、[L520-523](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L520-L523)（无限边界断言，注意位于 `if warn:` 块内）。运行 W10（`Box(-2, 1)`）通过+警告；F11（`low=-inf`）断言失败。推论：`warn=False` 时无限边界动作空间不会被拦截——使用 `check_env(env, warn=False)` 的调用方失去这层保护。
 
@@ -63,7 +63,19 @@
 
 ## 复核记录
 
-（待复核人审阅 PR 后填写：检查的结论、发现的问题与修正结果，附 PR review 链接。）
+2026-10-12，PR #19 复核修正：
+
+- C-05-07 增加 `warn=True` 限定和 F12（`warn=False`）对照；12 个用例的实际结果见[复核运行](../../../artifacts/runs/issue-05/2026-10-12-env-checker-review-fixes/summary.md)。原始 11 用例运行记录保留，两个运行目录各自记录依赖版本。
+- 脚本从实际导入的 `check_env` 文件定位 SB3 Git 仓库，读取 HEAD 并核对固定基线，同时要求源码目录没有未提交修改。PyPI 安装版、其他 commit 或修改过的源码会在写出实验记录之前被拒绝；记录增加实际导入路径、工作目录和真实执行命令。
+- 复现修正后的运行（在本仓库根目录，`SB3_SOURCE` 为固定 commit 的源码仓库，`SB3_PYTHON` 为已安装运行依赖的解释器路径）：
+
+  ```bash
+  PYTHONPATH="$SB3_SOURCE" uv run --no-project --python "$SB3_PYTHON" python \
+    scripts/issue_05_env_checker_failures.py \
+    --output-dir artifacts/runs/issue-05/2026-10-12-env-checker-review-fixes
+  ```
+
+复核对应 PR：[PR #19](https://github.com/Jaschenn/sb3-llm-code-understanding/pull/19)。
 
 ## 边界与不做的事
 
