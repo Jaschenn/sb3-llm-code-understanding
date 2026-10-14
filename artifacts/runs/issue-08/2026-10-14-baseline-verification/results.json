@@ -1,0 +1,155 @@
+{
+  "context": {
+    "sb3_source": "C:\\Users\\Yang\\WorkBuddy\\2026-10-14-16-39-25\\sb3-src",
+    "pinned_commit": "7cfb4dd6055e74b5caa4ed4d6777492209946e26",
+    "git_head": "7cfb4dd6055e74b5caa4ed4d6777492209946e26",
+    "head_matches_baseline": true,
+    "line_check_enabled": true
+  },
+  "overall": "PASS",
+  "checks": [
+    {
+      "check": "V-08-01",
+      "conclusion": "C-08-02",
+      "description": "新增的 sequence_space 标志被初始化（改动前的写法只有 graph_space）",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "should_skip = graph_space = sequence_space = False",
+      "expected_line": 102,
+      "actual_line": 102,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-02",
+      "conclusion": "C-08-04",
+      "description": "维护者新增的 OneOf 守卫函数存在",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "def _is_oneof_space(space: spaces.Space) -> bool:",
+      "expected_line": 12,
+      "actual_line": 12,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-03",
+      "conclusion": "C-08-04",
+      "description": "守卫函数内含 gym<1.0 的兼容分支（AttributeError 走 return False）",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "# Gym < v1.0",
+      "expected_line": 20,
+      "actual_line": 20,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-04",
+      "conclusion": "C-08-02",
+      "description": "Dict 分支内识别嵌套 Sequence",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "            elif isinstance(space, spaces.Sequence):",
+      "expected_line": 110,
+      "actual_line": 110,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-05",
+      "conclusion": "C-08-02",
+      "description": "Tuple 分支内识别嵌套 Sequence",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "        # Check for Sequence spaces inside Tuple",
+      "expected_line": 139,
+      "actual_line": 139,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-06",
+      "conclusion": "C-08-03",
+      "description": "OneOf 被单独处理（告警 + 置 should_skip）",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "    if _is_oneof_space(observation_space):",
+      "expected_line": 147,
+      "actual_line": 147,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-07",
+      "conclusion": "C-08-03",
+      "description": "OneOf 分支确实把 should_skip 置为 True",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "            \"Note: The checks for returned values are skipped.\"",
+      "expected_line": 150,
+      "actual_line": 150,
+      "status": "PASS",
+      "note": "标记在该文件出现 3 次，取首次命中 L150"
+    },
+    {
+      "check": "V-08-08",
+      "conclusion": "C-08-02",
+      "description": "Sequence 判断同时覆盖顶层与嵌套两种情形",
+      "file": "stable_baselines3/common/env_checker.py",
+      "marker": "    if isinstance(observation_space, spaces.Sequence) or sequence_space:",
+      "expected_line": 156,
+      "actual_line": 156,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-09",
+      "conclusion": "C-08-05",
+      "description": "回归测试：Sequence 嵌在 Dict 的环境类",
+      "file": "tests/test_env_checker.py",
+      "marker": "class SequenceInDictEnv(CustomEnv):",
+      "expected_line": 221,
+      "actual_line": 221,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-10",
+      "conclusion": "C-08-05",
+      "description": "回归测试：Sequence 嵌在 Tuple 的环境类",
+      "file": "tests/test_env_checker.py",
+      "marker": "class SequenceInTupleEnv(CustomEnv):",
+      "expected_line": 231,
+      "actual_line": 231,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-11",
+      "conclusion": "C-08-05",
+      "description": "回归测试：Sequence 嵌在 OneOf 的环境类",
+      "file": "tests/test_env_checker.py",
+      "marker": "class SequenceInOneOfEnv(CustomEnv):",
+      "expected_line": 239,
+      "actual_line": 239,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-12",
+      "conclusion": "C-08-03",
+      "description": "回归测试：OneOf 场景断言告警（C-08-03 的可复现落点）",
+      "file": "tests/test_env_checker.py",
+      "marker": "def test_check_env_oneof():",
+      "expected_line": 266,
+      "actual_line": 266,
+      "status": "PASS",
+      "note": ""
+    },
+    {
+      "check": "V-08-13",
+      "conclusion": "C-08-06",
+      "description": "变更日志条目存在（v2.7.1 Bug Fixes，署名 @copilot）",
+      "file": "docs/misc/changelog.md",
+      "marker": "Fixed env checker to properly handle `Sequence` observation spaces when nested inside composite spaces",
+      "expected_line": 158,
+      "actual_line": 158,
+      "status": "PASS",
+      "note": ""
+    }
+  ]
+}
