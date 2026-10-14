@@ -128,7 +128,7 @@ python scripts/issue_08_verify_chain.py \
 3. `tests/test_env_checker.py:L221-273` 是否构成 C-08-03 的回归测试；
 4. C-08-10 是否已按「待验证」处理、未被写成事实。
 
-复核对应 PR：（待补充）
+复核对应 PR：[#21](https://github.com/Jaschenn/sb3-llm-code-understanding/pull/21)（跨仓库提交：`yangza0707:task/8-maintenance-history` → `Jaschenn:main`，2026-10-14 开出）。已在该 PR 下留言请 @langzim 复核；因提交者非仓库 Collaborator，无法使用 GitHub 的 review request 功能，故以评论 @ 的方式通知。本 Issue 的 Assignee 与 `status:` 标签同样需组长代为设置。
 
 ## 边界与不做的事
 
