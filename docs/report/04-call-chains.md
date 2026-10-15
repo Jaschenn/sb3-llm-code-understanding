@@ -10,7 +10,7 @@
 
 ### 4.1.1 概览图（见 Issue #3 图稿）
 
-Mermaid 可编辑源：[`artifacts/diagrams/issue-03/predict-call-chain.mmd`](file:///Users/dingquan/it/trae/project/sb3-llm-code-understanding/artifacts/diagrams/issue-03/predict-call-chain.mmd)。图内容对应下面 4.1.2 的步骤编号。
+Mermaid 可编辑源：[预测调用链图](../../artifacts/diagrams/issue-03/predict-call-chain.mmd)。图内容对应下面 4.1.2 的步骤编号。
 
 ### 4.1.2 逐步复述
 
@@ -57,6 +57,7 @@ for _ in range(1000):
 ### 4.1.4 运行与测试证据
 
 - **运行证据**：`scripts/issue_03_predict_trace.py`，复现结果见 `artifacts/runs/issue-03/2026-10-09-predict-trace/output.log`。脚本把上述 2a ~ 2f 的每一步手动展开，并在最后做了 `assert model.predict(obs) == 手动展开结果` 的一致性断言。运行环境：Python 3.12.13，SB3 2.9.2a0（固定 commit），gymnasium 1.4.0，torch 2.14.1，seed=0。
+- **修正版复核**：[2026-10-15 运行](../../artifacts/runs/issue-03/2026-10-15-review/README.md)使用 Python 3.12.14 / PyTorch 2.14.0 / Gymnasium 1.3.0 / 固定 SB3 源码。每次从相同种子训练 512 步，不读取临时缓存；先切 eval 再手动展开，实测 tuple 误用与四变量解包，断言手动动作、argmax 和 API 输出一致。
 - **测试证据**：
   - `tests/test_predict.py:59 test_predict` —— 同一 model 既能吃单个 obs（shape 匹配 `action_space.shape` 且 `.contains(action) == True`），又能吃 2 条 env 的 batch obs（返回 shape[0] == batch）。
   - `tests/test_predict.py:121 test_mixing_gym_vecenv_api` —— 验证"把 reset 结果 tuple 直接传入 predict 会抛 ValueError"。
@@ -67,8 +68,8 @@ for _ in range(1000):
 | 错误写法 | 实际会发生什么 | 如何在源码里定位 |
 |---|---|---|
 | `obs = env.reset(); action = model.predict(obs)`（忘了 reset 还会返回 info，结果 obs 是 2 元组） | 抛 `ValueError: You have passed a tuple to the predict() function ... mixing Gym API` | `common/policies.py:356-363` |
-| `new_obs, reward, done, info = env.step(a)` 再把这个 4 元组传 predict（Gym<0.26 旧 API + 新 Gymnasium 混写） | 同上 tuple 检查也会误触发；或者 user 根本拿不到 `terminated/truncated` | `common/policies.py:356`；SB3 文档在 `VecEnv API vs Gym API` 一节有说明 |
-| 把 `shape=(4,)` 的 obs 重复 `np.stack([obs, obs])` 得到 `(2,4)`，再 predict 后直接对返回的 action 做 `env.step(action[0])` 这种正确写法没问题，但容易犯「取整标量错拿 actions[0][0]」一类错误 | 对 Discrete(2) 这种 step() 可能报 `int 不能迭代` 之类环境内部错，不在 SB3 里 | 环境自身 check（T05 会深读 env_checker.py）|
+| `new_obs, reward, done, info = env.step(a)`（用四变量接 Gymnasium 五项返回值） | 在用户代码解包处抛 `ValueError: too many values to unpack (expected 4)`，尚未调用 predict；四项 tuple 也不匹配 predict 专门的两项 tuple 防护 | [复核实测](../../artifacts/runs/issue-03/2026-10-15-review/output.log)；`common/policies.py:356` 只检查长度为 2 且第二项为 dict 的 tuple |
+| 对 `(2,4)` 批量观测的预测结果 `actions`，误取 `actions[0][0]` | Discrete 动作批量结果为一维数组，`actions[0]` 已是 NumPy 标量；多取一层索引在用户代码处失败，不是 env_checker 的异常 | `common/policies.py:370-384` 的 reshape 与 squeeze 分支 |
 
 ---
 
@@ -78,7 +79,7 @@ for _ in range(1000):
 
 ### 4.2.1 对象协作总览（见 Issue #4 图稿）
 
-Mermaid 源：[`artifacts/diagrams/issue-04/learn-call-chain.mmd`](file:///Users/dingquan/it/trae/project/sb3-llm-code-understanding/artifacts/diagrams/issue-04/learn-call-chain.mmd)。图形形状分 4 种色块：
+Mermaid 源：[训练调用链图（由 PR #18 提供，合入后本地路径生效）](../../artifacts/diagrams/issue-04/learn-call-chain.mmd)；合入前见 [PR #18](https://github.com/Jaschenn/sb3-llm-code-understanding/pull/18)。图形形状分 4 种色块：
 - 黄色：一次性初始化 `_setup_learn`
 - 蓝色：每轮 rollout 采样
 - 红色：每轮 PPO.train() 参数更新
@@ -93,9 +94,9 @@ model.learn(total_timesteps=1_000_000)
 
 #### Phase A：构造器 `PPO.__init__()`
 - `PPO.__init__`（`ppo/ppo.py:80-171`）先 `super().__init__(...)` 跳到 `OnPolicyAlgorithm.__init__` 并传 `_init_setup_model=False`，因此暂时不建网络。
-- 接下来做 3 个断言：
-  - `normalize_advantage and batch_size > 1`（否则归一化会除 0 得 NaN），
-  - `n_envs * n_steps > 1`（同上，防止 advantage normalization 退化），
+- 接下来做两个条件断言和一个警告检查：
+  - 当 `normalize_advantage=True` 时要求 `batch_size > 1`，
+  - 同样仅在启用归一化时要求 `n_envs * n_steps > 1`，
   - 若 `n_steps × n_envs % batch_size != 0`，`warnings.warn` 提示最后一个 minibatch 会被截断，建议换 batch_size 为 buffer_size 的因数。
 - 最后 `_init_setup_model=True` → 调用 `PPO._setup_model()`（`ppo/ppo.py:173-183`）把 `clip_range` / `clip_range_vf` 包成 `FloatSchedule`；父类 `OnPolicyAlgorithm._setup_model`（`on_policy_algorithm.py:115-141`）则真正：
   - 创建 `lr_schedule`、`set_random_seed`
@@ -128,7 +129,7 @@ model.learn(total_timesteps=1_000_000)
      - 更新 `_last_obs = new_obs; _last_episode_starts = dones`
    - 采满 n_steps 之后：`policy.predict_values(new_obs)` 拿 `last_values`，调 `rollout_buffer.compute_returns_and_advantage(last_values, dones)`（`buffers.py:403-439`）算 GAE；再 `callback.on_rollout_end()`
 2. `iteration += 1`；`_update_current_progress_remaining(num_timesteps, total)` → `_current_progress_remaining = 1 - n/N`，后面 `lr_schedule`、`clip_range`、`clip_range_vf` 都靠这个数衰减
-3. 可选：`if iteration % log_interval == 0: self.dump_logs(iteration)`。输出字段：`rollout/ep_rew_mean`、`rollout/ep_len_mean`、`time/fps`、`time/time_elapsed`、`time/total_timesteps`、`rollout/success_rate`。除了 time/total_timesteps 指定 exclude="tensorboard" 之外都同时写 stdout+tb
+3. 可选：`if log_interval is not None and iteration % log_interval == 0: self.dump_logs(iteration)`。输出字段包括 `rollout/ep_rew_mean`、`rollout/ep_len_mean`、`time/fps`、`time/time_elapsed`、`time/total_timesteps`、`rollout/success_rate`。`time/iterations`、`time/time_elapsed` 和 `time/total_timesteps` 排除 TensorBoard；具体输出目标还取决于 logger 配置。
 4. `self.train()`（在 PPO 中重写；见下文 D 阶段）
 
 #### Phase D：`PPO.train()`（`ppo/ppo.py:184-301`）参数更新
@@ -140,11 +141,11 @@ model.learn(total_timesteps=1_000_000)
   - 若 `normalize_advantage and len(advantages) > 1`：`advantages = (A - A.mean()) / (A.std() + 1e-8)`
   - `ratio = exp(log_prob - old_log_prob)`；`policy_loss = - min(A·r, A·clip(r, 1-ε, 1+ε)).mean()`
   - value_loss：若 `clip_range_vf != None`，做 value 的 clip（`rollout_data.old_values + clamp(values-old_values, -ε_v, +ε_v)`），否则直接 MSE(returns, values)
-  - `entropy_loss = -mean(entropy)`（离散连续都有解析熵；没有就用 -log_prob 近似）
+  - 有解析熵时 `entropy_loss = -mean(entropy)`；否则使用 `-mean(-log_prob) = mean(log_prob)` 作为负熵近似
   - `total_loss = pg_loss + ent_coef·H + vf_coef·value_loss`
   - `approx_kl = mean(exp(log_ratio)-1 - log_ratio)`（逆向 KL 的 Schulman 近似，issue #417）。如果设了 `target_kl` 且近似值超过 `1.5 × target_kl` → 提前 break，放弃后续 epoch
   - Optimizer：`zero_grad()` → `loss.backward()` → `clip_grad_norm_(policy.parameters(), max_grad_norm)` → `step()`
-- 循环完后 `self._n_updates += epoch`（每个 epoch +1，不是每个 batch）；`explained_variance(values.flatten(), returns.flatten())`；最后一长串 `logger.record(train/...)` 把 entropy_loss / pg_loss / value_loss / approx_kl / clip_fraction / explained_variance / std / n_updates / clip_range / clip_range_vf 写出来
+- 每个 epoch 的 minibatch 循环结束后执行 `self._n_updates += 1`，然后检查 `continue_training` 决定是否退出 epoch 循环；即使因 KL 阈值中断，本 epoch 仍计数。全部 epoch 结束后用 rollout_buffer 中的 values/returns 计算 explained_variance，并记录 train/* 指标。本例 4 次 rollout × 2 epochs 得到 `_n_updates=8`。
 
 #### Phase E：退出 while + callback.on_training_end() + return self
 
@@ -157,18 +158,18 @@ model.learn(total_timesteps=1_000_000)
 | `observations` | `(2048, 1, 4)` float32 | `RolloutBuffer.add` 每步一条 | `train()` 中 `rollout_buffer.get(batch_size)` yield 的每一批 observations |
 | `actions`      | `(2048, 1, 1)` int64（Discrete 经过 reshape 成 1）| add 每步 | train 里 `actions.long().flatten()` 再送 evaluate_actions |
 | `rewards`      | `(2048, 1)` float32 | add 每步（**含** TimeLimit.truncated 修正后的奖励）| compute_returns_and_advantage 作为 r_t |
-| `episode_starts` | `(2048, 1)` bool | add 每步 | GAE 里 `next_non_terminal = 1.0 - dones` 的直接来源 |
+| `episode_starts` | `(2048, 1)` float32 | add 每步，记录布尔语义的 0/1 | GAE 非末步使用 `1.0 - episode_starts[step+1]`；末步使用最后的 dones |
 | `values`       | `(2048, 1)` float32 | add 每步 | compute_returns_and_advantage 作为 V(S_t)；PPO.train 里 explained_variance 用 |
-| `log_probs`    | `(2048, 1)` float32 | add 每步，来自 policy.forward 的 log_prob | train 里 `old_log_prob = rollout_data.log_prob` 算 ratio |
+| `log_probs`    | `(2048, 1)` float32 | add 每步，来自 policy.forward 的 log_prob | get() 输出为 `rollout_data.old_log_prob`，train 用它计算 ratio |
 | `returns`      | `(2048, 1)` float32 | compute_returns_and_advantage 末尾 | train 的 value_loss 作为 supervision（TD-GAE target）|
 | `advantages`   | `(2048, 1)` float32 | 同上 | train 里 surrogate loss 的权重 A |
 
 ### 4.2.4 运行与测试证据
 
-- **运行证据**：`scripts/issue_04_learn_trace.py`，以 `n_steps=32, batch_size=16, n_epochs=2, total=128` 跑通（4 轮完整 rollout）。输出 `artifacts/runs/issue-04/2026-10-09-learn-trace/output.log`：
+- **运行证据**：由 PR #18 提供的 `scripts/issue_04_learn_trace.py`，以 `n_steps=32, batch_size=16, n_epochs=2, total=128` 跑通（4 轮完整 rollout）。原输出为 `artifacts/runs/issue-04/2026-10-09-learn-trace/output.log`，修正后的输出见 PR #18 中的 `2026-10-15-review/output.log`：
   - callback 事件时序：`training_start → (rollout_start → rollout_end buf_len=32) × 4 → training_end`，每轮结束步数严格增加 32
   - RolloutBuffer 形状与 4.2.3 表一致（n_steps=32，n_envs=1）
-  - 训练前后 predict 动作分布不同（Section H）
+  - 修正版 Section H 直接比较 learn 前后参数快照，断言至少一个参数张量变化；评估分数及差值另行报告，不要求提升
 - **测试证据**：
   - `tests/test_train_eval_mode.py:320 test_a2c_ppo_collect_rollouts_with_batch_norm` —— 证明 collect_rollouts 期间 BN running_mean 不变 → 采样阶段不更新任何参数
   - `tests/test_run.py:40 test_advantage_normalization` —— normalize_advantage 的 T/F 两种都能顺利 learn
@@ -183,20 +184,21 @@ model.learn(total_timesteps=1_000_000)
 | `batch_size <= 1 且 normalize_advantage=True` | PPO.__init__ 断言 AssertionError | 完全不进入训练，参数初始化阶段就失败 |
 | `n_steps × n_envs == 1 且 normalize_advantage=True` | 同上 AssertionError | 同上 |
 | `clip_range_vf < 0` 被传入 | `PPO._setup_model`（`ppo/ppo.py:179`）AssertionError | |
-| 传入 env 的 observation_space / action_space 与已训练模型不一致（继续训练/加载模型 set_env 场景）| `BaseAlgorithm.set_env` 中 `check_for_correct_spaces` 抛 AssertionError | 见 base_class.py:497 |
+| 传入 env 的 observation_space / action_space 与已训练模型不一致（继续训练/加载模型 set_env 场景）| `BaseAlgorithm.set_env` 中 `check_for_correct_spaces` 抛 ValueError | 见 base_class.py:497 及 utils.py 中该函数 |
 
 ---
 
 ## 4.3 成功 vs 失败路径的交叉参考（与 T05 呼应）
 
-本章描述的都是"合法输入下的成功调用链"；若用户自己写的 Env 不符合契约，调用链会在以下位置提前炸掉，分别对应 T05 证据里的条目：
+以下区分算法构造、训练 wrapper 与显式环境检查器的失败位置；具体实验以已提交的各任务证据为准，不把尚未存在的脚本当作证据。
 
-| 阶段 | 位置 | 检查什么 | T05 对应失败脚本（假设存在）|
+| 阶段 | 位置 | 检查什么 | 证据范围 |
 |---|---|---|---|
-| PPO.__init__ / set_env | `base_class.py:168 env = _wrap_env` 后 → `check_for_nested_spaces` | 不支持嵌套 Dict obs space | issue_05_nested_dict.py |
+| PPO.__init__ / set_env | `_wrap_env` → `check_for_nested_spaces` | 不支持嵌套 Dict obs space | 本章按源码定位，不假设存在尚未提交的 T05 实验 |
 | PPO.__init__ | L180-202 | `supported_action_spaces` 断言；MlpPolicy + Dict space 报错；Box 必须有 finite bounds | |
-| PPO.__init__（assert）| ppo/ppo.py:140-151 | normalize_advantage × buffer_size 断言 | issue_05_batchsize_1_assert.py |
-| model.learn 第 1 次 step | env_checker.py（如果 env 是用户自定义的且未通过 check_env）| step 返回值、obs/action 形状、奖励标量等 —— T05 深挖 | issue_05_step_returns_4.py（返回 4 个不是 5 个）|
+| PPO.__init__（assert）| ppo/ppo.py:140-151 | normalize_advantage × buffer_size 断言 | 本章按源码定位，未引用假设脚本 |
+| 用户显式调用 `check_env(custom_env)` | env_checker.py 的 `_check_returned_values` | step 返回值元数、观测形状、奖励/终止标志类型等 | T05 独立检查器实验；PPO 不会在 learn 中自动调用 check_env |
+| 未预先检查的自定义环境在训练中返回四项 step 结果 | `DummyVecEnv.step_wait` 解包底层 Gymnasium step 结果 | 期望 obs/reward/terminated/truncated/info 五项 | 这是 wrapper 的解包失败，不是 env_checker 自动检查 |
 | rollout_buffer.add | buffers.py:460-479 | pos 越界、类型不一致 | 通常不会触发，除非手动改 |
 
-> 注意：如果用户用 `gym.make("CartPole-v1")` 这种官方环境，env_checker 通常不需要跑；T05 的失败脚本都是**故意构造错误的自定义 Env**来验证 checker 会在对应位置抛错、给出可读异常信息、以及源码中行号对应哪一类契约。
+> `check_env()` 是用户显式调用的诊断工具，PPO 的构造和 learn 不自动调用它。T05 可用故意错误的自定义环境验证检查器；这与同一错误环境直接训练时的实际失败位置是两条路径。

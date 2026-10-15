@@ -1,7 +1,7 @@
 # Issue #3：predict() 端到端调用链
 
 负责人：@dingdadabset  
-复核人：待定  
+复核人：@Jaschenn
 上游基线：见 `docs/project-baseline.md`（stable-baselines3 commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26`）
 
 ## 可检验结论
@@ -15,7 +15,7 @@
 | C-03-05 | `ActorCriticPolicy._predict()`（PPO 默认 policy 类）等价于 `get_distribution(obs).get_actions(det)`；其中 `get_distribution` 会走 extract_features → mlp_extractor.forward_actor → action_net(logits) → 构造 CategoricalDistribution | 已支持 | `common/policies.py:709-717`、`743-752`、`684-707`；运行脚本 step 2.3 明确打印 distribution 类型为 `CategoricalDistribution` 及 det=True 返回 `argmax(logits)` |
 | C-03-06 | `predict(..., deterministic=True)` 对离散动作走 `argmax(logits)`；对连续 Box 如果设置了 `squash_output=True` 会走 `unscale_action()` 把 tanh 后的 `[-1,1]` 反变换回 `[low, high]`；否则 `clip(low,high)`；对 Discrete 这一步跳过 | 已支持 | `common/policies.py:372-384`；运行日志 step 2.5 明确打印「CartPole 是 Discrete，本步不执行」；对连续动作的分支在同一段源码里可直接阅读 |
 | C-03-07 | 「原生 Gymnasium Env」 与 「SB3 VecEnv」 的关键 API 差 异：前者 `reset()` 返回 `(obs, info)` 2 元组、`step(a)` 返回 `(obs, r, terminated, truncated, info)` 5 元组；后者 `reset()` **只返回 obs**（形状已经加了 n_envs 批维）、`step(a)` 返回 `(obs, r, dones, infos)` 4 元组，且 dones=bool[] / infos=list[dict] | 需限定 | 运行日志 step1 vs 源码 `common/vec_env/base_vec_env.py`（见 `base_class.py:204 _wrap_env` 将非 VecEnv 包成 DummyVecEnv）；需要区分"训练时内部用的 VecEnv"和"用户自己持有的普通 Gym Env"两种上下文 |
-| C-03-08 | 整个 `predict()` 过程处于 `torch.no_grad()` 上下文 + `set_training_mode(False)`；因此即便 policy 里含 Dropout/BatchNorm，多次相同 `obs` 调用 `predict(obs, deterministic=True)` **返回结果完全一致** | 已支持 | `common/policies.py:352,367`；测试 `tests/test_train_eval_mode.py:346-380 test_predict_with_dropout_batch_norm` 连续 6 次 `np.testing.assert_allclose` 通过，且 batch_norm_stats 前后不变 |
+| C-03-08 | `predict()` 入口切 eval 模式，仅 `_predict()` 调用位于 `torch.no_grad()` 内；上游测试中同一模型、同一 observation 的确定性预测结果一致，且 BatchNorm 统计量不变 | 已支持，限定于被测网络与运行条件 | `common/policies.py:352,367`；测试 `tests/test_train_eval_mode.py:346-380 test_predict_with_dropout_batch_norm`；本次复跑结果见文末 |
 
 ## 证据记录
 
@@ -104,4 +104,16 @@ for _ in range(5):
 
 ## 复核记录
 
-（复核人填写后写入：结论核对、发现的问题、修正结果、PR Review 链接。）
+2026-10-15，复核人：@Jaschenn。对 [PR #17](https://github.com/Jaschenn/sb3-llm-code-understanding/pull/17) 检查并修正，原提交为 `b91914c5ef8e5a778d4745b0eb51052a5fd09912`。以下保留源码核对与自动化实测结果，本次直接修正并提交，不合并 PR。
+
+| 问题 | 修正与验证 |
+|---|---|
+| 四变量解包 Gymnasium step 被误归为 predict tuple 拦截 | 报告按实际失败位置拆开说明；脚本实际触发两种错误并断言信息，见[复核输出](../../../artifacts/runs/issue-03/2026-10-15-review/output.log) |
+| 把 env_checker 写入 learn 自动调用链，并引用假设存在的 T05 脚本 | 区分显式 check_env 与 DummyVecEnv.step_wait 的底层解包，删除假设脚本名；按固定源码定位，不宣称运行了不存在的实验 |
+| 图稿使用作者电脑的 file:// 链接 | 改为仓库相对链接；训练图由 PR #18 提供，明确标记跨 PR 依赖，合入前可通过其 PR 查看 |
+| 将更新计数误写为循环外 `_n_updates += epoch` | 按固定源码改为每 epoch 末加 1，并说明 KL 早停的计数行为；同步修正条件断言、logger 排除项等相邻错误 |
+| 手动展开没实际切 eval，且读取全局临时缓存导致运行输入不可控 | 手动展开先切 eval；每次从 seed=0 初始化并训练 512 步，CPU 单线程；实际输出 Categorical logits/probs 并断言动作是 argmax |
+
+本次环境为 Python 3.12.14 / PyTorch 2.14.0 / Gymnasium 1.3.0 / SB3 2.9.2a0，SB3 从固定基线源码构建 wheel。修正版脚本正常退出，Ruff lint/格式检查通过；上游 tuple 混用和含 Dropout/BatchNorm 的预测测试共 **11 passed**。命令、脚本快照与原始测试输出见[复核运行目录](../../../artifacts/runs/issue-03/2026-10-15-review/README.md)。原运行目录保留，不用新输出覆盖历史记录。Mermaid CLI 12.0.0 已成功渲染预测图。
+
+固定源码索引：[predict 转发](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L537)、[policy 预测](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L331)、[DummyVecEnv.step_wait](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/vec_env/dummy_vec_env.py#L56)、[PPO epoch 计数](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/ppo/ppo.py#L280)。
