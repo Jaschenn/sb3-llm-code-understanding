@@ -1,0 +1,42 @@
+%% T04 Issue #4 — 固定基线 7cfb4dd 的 PPO / OnPolicyAlgorithm 控制流
+flowchart TD
+    A["用户 model.learn(total_timesteps)"] --> B["PPO.learn → OnPolicyAlgorithm.learn"]
+    B --> C["BaseAlgorithm._setup_learn：计时、deque、按需 reset、logger、callback"]
+    C --> START["callback.on_training_start()"]
+    START --> W{"num_timesteps < total?"}
+    W -->|否| END["callback.on_training_end() → return self"]
+    W -->|是| R["collect_rollouts：policy eval；RolloutBuffer.reset 重新分配归零；按需 gSDE reset"]
+    R --> RS["callback.on_rollout_start()"]
+    RS --> RW{"采满 n_steps?"}
+    RW -->|否| P["no_grad：policy(obs) → actions, values, log_probs"]
+    P --> STEP["Box clip/unscale；VecEnv.step；num_timesteps += n_envs"]
+    STEP --> CB{"callback.on_step() 返回 True?"}
+    CB -->|否| STOP["collect_rollouts 返回 False；learn 跳出 while；本轮不 train"]
+    STOP --> END
+    CB -->|是| ADD["更新 episode 信息；TimeLimit 截断时按条件 bootstrap；buffer.add；更新 last_obs/dones"]
+    ADD --> RW
+    RW -->|是| GAE["predict_values；compute_returns_and_advantage；on_rollout_end；返回 True"]
+    GAE --> PROGRESS["iteration += 1；更新 progress_remaining"]
+    PROGRESS --> LOG{"log_interval 非 None 且整除?"}
+    LOG -->|是| DUMP["dump_logs(iteration)"]
+    DUMP --> TRAIN
+    LOG -->|否| TRAIN["PPO.train：train mode；更新学习率；计算 clip_range"]
+    TRAIN --> EPOCH{"还有 epoch?"}
+    EPOCH -->|是| GET["rollout_buffer.get(batch_size)：每次重新 permutation；首次展平"]
+    GET --> BATCH{"还有 minibatch?"}
+    BATCH -->|是| LOSS["evaluate_actions；按配置 normalize advantage；policy/value/entropy loss；approx_kl"]
+    LOSS --> KL{"target_kl 已设置且 approx_kl > 1.5 × target_kl?"}
+    KL -->|否| OPT["zero_grad → backward → clip_grad_norm → optimizer.step"]
+    OPT --> BATCH
+    KL -->|是| EARLY["continue_training=False；跳出 minibatch 循环；跳过本批优化"]
+    BATCH -->|否| COUNT["本 epoch 结束：_n_updates += 1"]
+    EARLY --> COUNT
+    COUNT --> CONT{"continue_training?"}
+    CONT -->|是| EPOCH
+    CONT -->|否| METRICS["explained_variance；记录 train/* 指标"]
+    EPOCH -->|否| METRICS
+    METRICS --> W
+    style END fill:#d4f5d4,stroke:#0a7d0a
+    style TRAIN fill:#fde0e0,stroke:#8a0d0d
+    style R fill:#e7e7ff,stroke:#212199
+    style C fill:#fff4d9,stroke:#804a00

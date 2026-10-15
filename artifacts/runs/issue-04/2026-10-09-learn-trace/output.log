@@ -1,0 +1,121 @@
+
+====================================  T04 · 框架级训练调用链追踪（CartPole-v1 + PPO MlpPolicy）  =====================================
+
+── A. PPO.__init__ → 内部 _setup_model()（on_policy L115） ─────────────────────────────────────────────────────────────────
+   model 类型                      : 'PPO'
+   model.policy 类型               : 'ActorCriticPolicy'
+   model.rollout_buffer          : RolloutBuffer buffer_size=32 n_envs=1 obs_space=Box([-4.8               -inf -0.41887903        -inf], [4.8               inf 0.41887903        inf], (4,), float32) act_space=Discrete(2)
+   n_steps（每轮 rollout 步数/env）    : 32
+   batch_size（minibatch 大小）      : 16
+   n_epochs（每轮 rollout 训练几轮）     : 2
+   总 buffer 行数 = n_steps × n_envs: 32
+   结论：__init__ 时 _setup_model 已经初始化了 lr_schedule、policy、rollout_buffer。耗时 0.479s
+
+── B. learn() 入口（on_policy L300 → 先调用 BaseAlgorithm._setup_learn L382） ─────────────────────────────────────────────────
+   learn 签名：learn(total_timesteps, callback, log_interval, tb_log_name, reset_num_timesteps, progress_bar)
+   _setup_learn 做 4 件事：
+   ① time.time_ns() → start_time
+   ② (re)set deques ep_info_buffer / ep_success_buffer（默认 window=100）
+   ③ 首次或 reset=True 时调用 env.reset() 初始化 self._last_obs，self._last_episode_starts=ones
+   ④ 配置 logger、callback.init_callback，返回 (total_timesteps, callback)
+   PPO.learn (ppo L302) 只是 super().learn 透传；真正的主循环在 OnPolicyAlgorithm.learn。
+
+── C. learn() 主循环（on_policy L323-L338）— 伪代码： ───────────────────────────────────────────────────────────────────────────
+
+   iteration = 0
+   total_timesteps, callback = self._setup_learn(...)
+   callback.on_training_start(locals(), globals())
+   while self.num_timesteps < total_timesteps:
+       if not self.collect_rollouts(env, callback, rollout_buffer, n_rollout_steps=self.n_steps):
+           break
+       iteration += 1
+       self._update_current_progress_remaining(num_timesteps, total)
+       if iteration % log_interval == 0: self.dump_logs(iteration)
+       self.train()                          # ← PPO.train() 在这里真正更新参数
+   callback.on_training_end()
+   return self
+
+
+── D. collect_rollouts() 内部做了什么（on_policy L162） ────────────────────────────────────────────────────────────────────────
+   ① policy.set_training_mode(False) （预测前关 dropout）
+   ② rollout_buffer.reset()
+   ③ gSDE 则 policy.reset_noise(n_envs)
+   ④ callback.on_rollout_start()
+   ⑤ for n_steps in 0..n_rollout_steps-1:
+        · obs_as_tensor(_last_obs)  （numpy → torch）
+        · with no_grad: actions, values, log_probs = policy(obs_tensor)
+        · Box 空间：unscale/clipped_actions = clip/unscale
+        · new_obs, rewards, dones, infos = env.step(clipped_actions)
+        · num_timesteps += n_envs ; callback.on_step()
+        · _update_info_buffer(infos, dones) — 把 Monitor 的 r/l 放进 ep_info_buffer deque
+        · for idx, done: TimeLimit.truncated 特殊处理：reward += gamma * V(terminal_obs)（issue 633）
+        · rollout_buffer.add(last_obs, actions, rewards, last_episode_starts, values, log_probs)
+        · _last_obs = new_obs  ;  _last_episode_starts = dones
+   ⑥ 最后一步：with no_grad: last_values = policy.predict_values(obs_as_tensor(new_obs))
+   ⑦ rollout_buffer.compute_returns_and_advantage(last_values=last_values, dones=dones)
+   ⑧ callback.on_rollout_end() ；return True
+
+── E. rollout_buffer：关键字段（common/buffers.py:343 RolloutBuffer） ─────────────────────────────────────────────────────────
+   observations 形状（未 reset 前）    : ndarray shape=(32, 1, 4) dtype=float32
+   actions 形状                    : ndarray shape=(32, 1, 1) dtype=int64
+   rewards                       : ndarray shape=(32, 1) dtype=float32
+   returns                       : ndarray shape=(32, 1) dtype=float32
+   advantages                    : ndarray shape=(32, 1) dtype=float32
+   log_probs                     : ndarray shape=(32, 1) dtype=float32
+
+── F. 真正开始 learn(TOTAL_TIMESTEPS)，并借助 callback 看每个阶段的顺序 ────────────────────────────────────────────────────────────────
+   TOTAL_TIMESTEPS=128, n_steps=32 → 预期 rollout 轮数 ≈ 4
+   learn 总耗时 0.072s；最终 num_timesteps = 128
+   callback 事件顺序（含累计步数）：
+     +    0.0 ms  timesteps=0       training_start
+     +    0.0 ms  timesteps=0       rollout_start
+     +   21.5 ms  timesteps=32      rollout_end  buf_len=32
+     +   52.2 ms  timesteps=32      rollout_start
+     +   55.7 ms  timesteps=64      rollout_end  buf_len=32
+     +   58.8 ms  timesteps=64      rollout_start
+     +   62.2 ms  timesteps=96      rollout_end  buf_len=32
+     +   64.9 ms  timesteps=96      rollout_start
+     +   68.4 ms  timesteps=128     rollout_end  buf_len=32
+     +   71.2 ms  timesteps=128     training_end
+
+── G. PPO.train() 内部（ppo L184）主要控制流 ────────────────────────────────────────────────────────────────────────────────────
+   ① policy.set_training_mode(True) — 打开 train 模式
+   ② _update_learning_rate(policy.optimizer)  按 progress_remaining 线性衰减
+   ③ clip_range = self.clip_range(progress_remaining)
+   ④ for epoch in range(n_epochs):        # 默认 10 次，这里设为 2
+        for rollout_data in rollout_buffer.get(batch_size):
+            · Discrete: actions.long().flatten()
+            · values, log_prob, entropy = policy.evaluate_actions(rollout_data.obs, actions)
+            · advantages normalize （mean=0, std=1；mini-batch level）
+            · ratio = exp(log_prob - old_log_prob)
+            · policy_loss = - min(adv*ratio, adv*clamp(ratio,1-ε,1+ε)).mean()
+            · value_loss: 可选 clip_range_vf；否则 MSE(returns, values_pred)
+            · entropy_loss: -entropy.mean()（或近似 -log_prob）
+            · loss = pg + ent_coef*entropy + vf_coef*value
+            · approx_kl = mean(exp(log_ratio)-1 - log_ratio)（逆向 KL，issue 417）
+            · 若 target_kl 设置且 approx_kl > 1.5·target_kl：早停 break（可选）
+            · optimizer.zero_grad() → loss.backward() → clip_grad_norm_(max_grad_norm) → optimizer.step()
+        _n_updates += 1
+   ⑤ explained_variance(values.flatten(), returns.flatten())
+   ⑥ logger.record 一大堆指标（entropy_loss / pg_loss / value_loss / approx_kl / clip_fraction / …）
+
+── H. 交叉证据：用训练前后 model.predict 对比得分，验证 train() 确实改变了 policy 参数 ─────────────────────────────────────────────────────────
+   训练前（新构造的 PPO）: 平均得分 = 222.3  （3 局，deterministic=True）
+   训练后（learn 完）: 平均得分 = 79.0  （3 局，deterministic=True）
+   ✓ 训练后得分提升 = 79.0（若 policy 没变则不会涨；随机 CartPole 一般 ~20 左右）
+
+── I. 训练主循环源码位置索引（便于 issue-04.md 引用） ───────────────────────────────────────────────────────────────────────────────────
+   ppo/ppo.py:18-171                            PPO.__init__（字段注入，batch_size/n_epochs/clip_range 等断言）
+   ppo/ppo.py:173-183                           PPO._setup_model（FloatSchedule 包装 clip_range）
+   common/on_policy_algorithm.py:61-141         OnPolicyAlgorithm.__init__ + _setup_model（创建 RolloutBuffer + policy）
+   common/base_class.py:382-435                 BaseAlgorithm._setup_learn（reset env、logger、callback）
+   common/on_policy_algorithm.py:162-268        OnPolicyAlgorithm.collect_rollouts（采样、写入 buffer、算 returns/adv）
+   common/buffers.py:343                        RolloutBuffer 类定义
+   common/buffers.py:440                        RolloutBuffer.add（写入单步 transition）
+   common/buffers.py:403                        RolloutBuffer.compute_returns_and_advantage（GAE）
+   common/buffers.py:481                        RolloutBuffer.get（按 batch_size yield minibatches）
+   ppo/ppo.py:184-301                           PPO.train（n_epochs × minibatches × surrogate loss + 优化）
+   common/on_policy_algorithm.py:300-342        OnPolicyAlgorithm.learn（主 while 循环：rollout → train → dump_logs）
+   ppo/ppo.py:302-318                           PPO.learn → super().learn 透传
+
+===============================================  End · T04 learn trace 完成  ===============================================
