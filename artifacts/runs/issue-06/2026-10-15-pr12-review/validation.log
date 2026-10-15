@@ -1,0 +1,10 @@
+Runtime: {"gymnasium": "1.3.0", "machine": "arm64", "platform": "macOS-27.0.1-arm64-arm-64bit", "python": "3.12.14", "pytorch": "2.14.0", "sb3_import_path": "/private/tmp/sb3-pr-review/pr12-validation-venv/lib/python3.12/site-packages/stable_baselines3/__init__.py", "stable_baselines3": "2.9.2a0"}
+Prediction matches saved JSON exactly
+Training events match saved JSONL exactly
+Learning-curve means: [98.1, 84.9, 91.1, 455.5, 485.6]
+Exact saved learning curve (except timing): False
+Traceback (most recent call last):
+  File "/private/tmp/sb3-pr-review/validate_pr12.py", line 48, in <module>
+    assert effect == saved_effect, 'Learning curve still differs with pinned Python and dependencies'
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Learning curve still differs with pinned Python and dependencies
