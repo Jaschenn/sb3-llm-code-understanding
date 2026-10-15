@@ -14,6 +14,7 @@ sequenceDiagram
     participant CD as CategoricalDistribution<br>.get_actions(det=True)
     participant ENV as Gymnasium Env.step()
 
+    Note over U,ENV: 本图主链仅为 PPO / CartPole / MlpPolicy 的单观测确定性预测
     U->>U: obs, info = env.reset()<br># shape=(4,) for CartPole
     Note over U: 注意 tuple (obs,info)<br>不要直接喂给 model.predict()
     U->>BA: model.predict(obs, deterministic=True)
@@ -35,9 +36,7 @@ sequenceDiagram
     CD-->>ACP_P: actions shape=(1,) (int64),<br>deterministic=True 即 argmax(probs)<br>与 logits 的 argmax 一致
     ACP_P-->>BP: actions Tensor
     BP->>BP: actions.cpu().numpy().reshape((-1, *action_space.shape))
-    alt action_space 是 Box
-        BP->>BP: squash_output ? unscale_action : clip(low,high)
-    end
+    Note over BP: 本例 Discrete 不执行 Box 后处理。<br>补充：其他 Box 配置按 squash_output 选择 unscale 或 clip，<br>其前面的动作分布不使用本图的 Categorical。
     BP->>BP: vectorized=False → squeeze(batch) → shape=()
     BP-->>BA: final_action ndarray scalar + state=None
     BA-->>U: (action, state)

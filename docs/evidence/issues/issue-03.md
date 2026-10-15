@@ -29,7 +29,7 @@
 
 | AI 编号 | 模型与提问原文/链接 | AI 回答摘要 | 验证动作 | 观察结果 | 修正后的表述 |
 |---|---|---|---|---|---|
-| AI-03-01 | GPT-4o-mini，「stable-baselines3 的 model.predict(obs) 到动作之间的调用顺序是怎样的？每层文件路径是啥？」 | AI 回答的顺序是：`BaseAlgorithm.predict → BasePolicy.predict → _get_action_dist_from_latent → forward`，并且说 BasePolicy.predict 内部直接走 forward() | 实际对比 policies.py 源码 + 自己在脚本里手动展开每一步 | ❌ AI 错误了两处：① `BasePolicy.predict` 不调用 `forward()`，而是调用 `_predict()`；② `_predict` 对 ActorCriticPolicy 来说是 `get_distribution().get_actions()`，forward() 是同时返回 actions+values+log_prob 的训练接口（predict 里不需要 value）。测试脚本 step 2.7 用 `assert final_action == model.predict()` 验证了不经过 forward 这条路径也能拿到完全一致的输出。 | 正确顺序：`BaseAlgorithm.predict → BasePolicy.predict → (eval mode, 输入校验) → obs_to_tensor → no_grad下 _predict → (get_distribution → … → Categorical.argmax) → numpy.reshape → Box分支 clip/unscale → (非vectorized时squeeze batch)`；forward() 只在 collect_rollouts 等训练阶段会用（因为需要 values 和 log_prob），推理链路 predict 不会触发 forward。 |
+| AI-03-01 | GPT-4o-mini，「stable-baselines3 的 model.predict(obs) 到动作之间的调用顺序是怎样的？每层文件路径是啥？」 | AI 回答的顺序是：`BaseAlgorithm.predict → BasePolicy.predict → _get_action_dist_from_latent → forward`，并且说 BasePolicy.predict 内部直接走 forward() | 实际对比 policies.py 源码 + 自己在脚本里手动展开每一步 | 原记录中的动作相等只支持输出一致，不能证明内部路径。第二轮 profile 直接观察 _predict→get_distribution→mode，并监测到本次调用未进入 ActorCriticPolicy.forward。 | 固定基线当前 PPO/CartPole 路径为 BaseAlgorithm.predict→BasePolicy.predict→obs_to_tensor→no_grad 下 _predict→get_distribution→CategoricalDistribution.mode→NumPy 后处理。get_actions 定义于 Distribution；mode 使用 argmax(probs)。自定义策略不自动继承此路径。 |
 | AI-03-02 | GPT-4o-mini，「predict 里如果传 deterministic=False 怎么采样？deterministic=True 呢？对 Discrete(2) 会不会有区别？」 | AI 说：「deterministic=False 会从 Categorical 按 logits 采样；True 直接 argmax；两者对离散和连续都一样」 | 对比 policies.py `_predict` + `common/distributions.py` 中 CategoricalDistribution.get_actions 代码 + 脚本里 det=True 时确实拿到的是 argmax 的结果 | ⚠️ AI 的结论基本正确，但漏了一个边界：连续空间（Box）如果 `squash_output=True`（gSDE），还需要走 `unscale_action()`；另外 get_actions 返回 shape 对 Discrete 是 `(batch,)`，对 Box 是 `(batch, action_dim)`，最后 reshape 成 `(-1, *action_space.shape)` 这一步 AI 也没提。 | 保留 AI 对 det=True/False 核心区分；补：① reshape 到 action_space.shape 的对齐动作；② Box 空间的 clip/unscale 分支；③ Discrete 的 get_actions 不会返回 float 动作，所以在最后 squeeze 之前 actions shape 与 Box 不一样。 |
 
 ## 复核记录
@@ -59,3 +59,9 @@
 - T04 的对应结论、归一化条件、续训、数据展平、KL 与 callback 退出等说明在报告中同步收紧；报告明确 PR #18 的依赖。
 
 本轮完整结果和命令见[第二轮运行记录](../../../artifacts/runs/issue-03/2026-10-15-audit/README.md)。旧目录中的无基线防护脚本仅作为历史快照，不作为当前复现入口。
+
+### 第三轮复核
+
+2026-10-15，复核人：@Jaschenn。复核提交 `b83fcb6b448719ab47e6f24df6260d74ad71b803`。AI 记录的当前观察/修正栏与真实 profile 证据统一；预测图限定为本次 CartPole 路径，Box 后处理改为旁注。
+
+在隔离副本中，从 main `07a0a02342da345cc3eb343b6006856a2bbd557f` 依次模拟合并 PR #17 与 #18，无冲突。合并后两份主脚本正常退出；29 个针对性用例与 25 个上游用例合计 **54 passed**。其中 3 个上游参数组合直接返回，不计作实际执行了预测断言。结果与重现命令见[第三轮记录](../../../artifacts/runs/issue-03/2026-10-15-recheck/README.md)。本轮未发现新的运行故障，未合并远端 PR。提交签名因既有 1Password socket 故障不可用，本轮沿用单次禁用签名，不修改全局配置。
