@@ -7,14 +7,20 @@ T04 / Issue #4：追踪 `model.learn(total_timesteps)` 在软件结构层面的�
 
 from __future__ import annotations
 
+import sys
 import time
 
 import gymnasium as gym
 import numpy as np
 import torch as th
+from issue_04_baseline import require_baseline
 from stable_baselines3 import PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+
+require_baseline()
 
 ENV_ID = "CartPole-v1"
 SEED = 0
@@ -169,7 +175,7 @@ print("""
            break
        iteration += 1
        self._update_current_progress_remaining(num_timesteps, total)
-       if iteration % log_interval == 0: self.dump_logs(iteration)
+       if log_interval is not None and iteration % log_interval == 0: self.dump_logs(iteration)
        self.train()                          # ← PPO.train() 在这里真正更新参数
    callback.on_training_end()
    return self
@@ -206,7 +212,7 @@ print("   ⑧ callback.on_rollout_end() ；return True")
 
 section("E. rollout_buffer：关键字段（common/buffers.py:343 RolloutBuffer）")
 rb: RolloutBuffer = model.rollout_buffer
-pretty("observations 形状（未 reset 前）", rb.observations)
+pretty("observations 形状（初始化后，显式 reset 前）", rb.observations)
 pretty(
     "actions 形状", rb.actions if rb.actions is not None else "None（reset 后初始化）"
 )
@@ -227,14 +233,47 @@ print(
     f"   TOTAL_TIMESTEPS={TOTAL_TIMESTEPS}, n_steps={N_STEPS} → 预期 rollout 轮数 ≈ {(TOTAL_TIMESTEPS + N_STEPS - 1) // N_STEPS}"
 )
 t1 = time.time()
-model.learn(
-    total_timesteps=TOTAL_TIMESTEPS,
-    callback=cb,
-    log_interval=1,
-    tb_log_name="t04_trace",
-    reset_num_timesteps=True,
-    progress_bar=False,
-)
+profile_methods = {
+    PPO.learn: "ppo_learn",
+    OnPolicyAlgorithm.learn: "learn",
+    BaseAlgorithm._setup_learn: "setup_learn",
+    OnPolicyAlgorithm.collect_rollouts: "collect_rollouts",
+    RolloutBuffer.compute_returns_and_advantage: "compute_returns",
+    BaseAlgorithm._update_current_progress_remaining: "update_progress",
+    OnPolicyAlgorithm.dump_logs: "dump_logs",
+    PPO.train: "train",
+}
+profile_codes = {method.__code__: name for method, name in profile_methods.items()}
+observed_calls = []
+
+
+def record_call(frame, event, arg):
+    if event == "call" and frame.f_code in profile_codes:
+        observed_calls.append(profile_codes[frame.f_code])
+
+
+previous_profile = sys.getprofile()
+sys.setprofile(record_call)
+try:
+    model.learn(
+        total_timesteps=TOTAL_TIMESTEPS,
+        callback=cb,
+        log_interval=1,
+        tb_log_name="t04_trace",
+        reset_num_timesteps=True,
+        progress_bar=False,
+    )
+finally:
+    sys.setprofile(previous_profile)
+expected_calls = ["ppo_learn", "learn", "setup_learn"] + [
+    "collect_rollouts",
+    "compute_returns",
+    "update_progress",
+    "dump_logs",
+    "train",
+] * 4
+assert observed_calls == expected_calls, observed_calls
+print("   实际调用路径：" + " → ".join(observed_calls))
 print(
     f"   learn 总耗时 {time.time() - t1:.3f}s；最终 num_timesteps = {model.num_timesteps}"
 )
@@ -273,7 +312,9 @@ print("            · Discrete: actions.long().flatten()")
 print(
     "            · values, log_prob, entropy = policy.evaluate_actions(rollout_data.observations, actions)"
 )
-print("            · advantages normalize （mean=0, std=1；mini-batch level）")
+print(
+    "            · 仅 normalize_advantage=True 且实际批内样本数>1 时归一化 advantages"
+)
 print("            · ratio = exp(log_prob - old_log_prob)")
 print("            · policy_loss = - min(adv*ratio, adv*clamp(ratio,1-ε,1+ε)).mean()")
 print("            · value_loss: 可选 clip_range_vf；否则 MSE(returns, values_pred)")
