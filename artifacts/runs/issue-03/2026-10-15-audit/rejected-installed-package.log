@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/private/tmp/sb3-pr17-review-fix/scripts/issue_03_baseline.py", line 21, in source_metadata
+    root = Path(git("rev-parse", "--show-toplevel")).resolve()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/sb3-pr17-review-fix/scripts/issue_03_baseline.py", line 16, in git
+    return subprocess.check_output(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jaschen/.local/share/uv/python/cpython-3.12.14-macos-aarch64-none/lib/python3.12/subprocess.py", line 466, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jaschen/.local/share/uv/python/cpython-3.12.14-macos-aarch64-none/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['git', '-C', '/private/tmp/sb3-pr-review/pr12-validation-venv/lib/python3.12/site-packages/stable_baselines3', 'rev-parse', '--show-toplevel']' returned non-zero exit status 128.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/private/tmp/sb3-pr17-review-fix/scripts/issue_03_predict_trace.py", line 24, in <module>
+    require_baseline()
+  File "/private/tmp/sb3-pr17-review-fix/scripts/issue_03_baseline.py", line 45, in require_baseline
+    metadata = source_metadata(stable_baselines3.__file__)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/sb3-pr17-review-fix/scripts/issue_03_baseline.py", line 31, in source_metadata
+    raise RuntimeError(f"SB3_BASELINE_REJECTED: {error}") from error
+RuntimeError: SB3_BASELINE_REJECTED: Command '['git', '-C', '/private/tmp/sb3-pr-review/pr12-validation-venv/lib/python3.12/site-packages/stable_baselines3', 'rev-parse', '--show-toplevel']' returned non-zero exit status 128.
