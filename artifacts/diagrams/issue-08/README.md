@@ -1,6 +1,6 @@
 # T08 图表
 
-- `maintenance-chain.mmd`：一组已关闭 Issue 的维护链条对照。上支是「有代码变更」（Issue #2172 → PR #2174 → merge commit `7883ed4`），下支是「判定不改」（Issue #1950 → `not_planned` 关闭）。每个节点的依据、链接与行号见 `docs/evidence/issues/issue-08.md`。
+- `maintenance-chain.mmd`：一组已关闭 Issue 的维护链条对照。上支是「有代码变更」（Issue #2172 → PR #2174 → merge commit `7883ed4`），下支是「无代码变更」（Issue #1950 → 由**报告者本人**以 `not_planned` 关闭，维护者动作止于标签调整）。每个节点的依据、链接与行号见 `docs/evidence/issues/issue-08.md`。
 - Mermaid 源文件是图表的编辑入口；修改后重新导出 PNG，报告引用导出图，证据文件引用此目录。
 
 在协作仓库根目录重新导出（本次使用 Mermaid CLI 12.0.0、白色背景、2 倍分辨率）：

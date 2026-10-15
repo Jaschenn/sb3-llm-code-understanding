@@ -2,7 +2,10 @@
 """Issue #8 复核脚本：核对 PR #2174 在固定基线中的落点。
 
 只读取 SB3 源码目录中的文本文件，不联网、不导入 SB3、不运行训练。
-结论见 docs/evidence/issues/issue-08.md（C-08-01 ~ C-08-06）。
+结论见 docs/evidence/issues/issue-08.md（C-08-01 ~ C-08-07）。
+
+共 16 项检查。其中 V-08-14 ~ V-08-16 为 2026-10-15 复核后补入，用于机械校验两条被复核纠正的表述：
+「告警与跳过只在 warn=True 下发生」以及「只检查直接子空间、不存在任意层级递归」。
 
 用法::
 
@@ -43,6 +46,8 @@ class Check:
     rel_path: str
     marker: str
     expected_line: int | None = None
+    # 当结论是「某标记只应出现固定次数」时使用（例如：函数体内无递归调用）。
+    expected_occurrences: int | None = None
     status: str = "PENDING"
     actual_line: int | None = None
     note: str = ""
@@ -55,6 +60,7 @@ class Check:
             "file": self.rel_path,
             "marker": self.marker,
             "expected_line": self.expected_line,
+            "expected_occurrences": self.expected_occurrences,
             "actual_line": self.actual_line,
             "status": self.status,
             "note": self.note,
@@ -138,6 +144,32 @@ CHECKS: list[Check] = [
         "Fixed env checker to properly handle `Sequence` observation spaces when nested inside composite spaces",
         158,
     ),
+    # --- 以下 3 项由复核意见补入（2026-10-15） ---
+    Check(
+        "V-08-14",
+        "C-08-03",
+        "OneOf/Sequence 的告警与跳过只在 warn=True 下发生：调用点在 check_env 的 `if warn:` 分支内",
+        ENV_CHECKER,
+        "    if warn:\n        should_skip = _check_unsupported_spaces(env, observation_space, action_space)",
+        501,
+    ),
+    Check(
+        "V-08-15",
+        "C-08-02",
+        "无任意层级递归：`_check_unsupported_spaces` 在文件中只出现 2 次（定义 + check_env 内唯一调用点）",
+        ENV_CHECKER,
+        "_check_unsupported_spaces",
+        None,
+        expected_occurrences=2,
+    ),
+    Check(
+        "V-08-16",
+        "C-08-02",
+        "Dict 分支遍历的是直接子空间（`observation_space.spaces.items()`），不深入下一层",
+        ENV_CHECKER,
+        "        for key, space in observation_space.spaces.items():",
+        105,
+    ),
 ]
 
 
@@ -183,7 +215,24 @@ def run(root: Path) -> tuple[list[Check], dict]:
             chk.status = "FAIL"
             chk.note = err
             continue
-        hits = [i + 1 for i, text in enumerate(lines) if chk.marker in text]
+        if "\n" in chk.marker:  # 多行标记：按整段文本定位起始行
+            text = "\n".join(lines)
+            idx = text.find(chk.marker)
+            hits = [] if idx < 0 else [text[:idx].count("\n") + 1]
+        else:
+            hits = [i + 1 for i, text in enumerate(lines) if chk.marker in text]
+
+        if chk.expected_occurrences is not None:
+            chk.actual_line = hits[0] if hits else None
+            if len(hits) == chk.expected_occurrences:
+                chk.status = "PASS"
+            else:
+                chk.status = "FAIL"
+                chk.note = (
+                    f"出现次数不符：期望 {chk.expected_occurrences} 次，实际 {len(hits)} 次"
+                )
+            continue
+
         if not hits:
             chk.status = "FAIL"
             chk.note = "未找到标记"
