@@ -1,0 +1,15 @@
+flowchart TD
+    A1["案例 A：有代码变更<br/>SB3 Issue #2172 · 2025-08-29 · 报告者 FredBill1<br/>Sequence 嵌在 Dict / Tuple / OneOf 内时，check_env 抛 AssertionError 而非告警"]
+    A2["PR #2174 · 由 GitHub Copilot 编码代理开出<br/>49389c2 Initial plan ｜ 9bab86d 检测 Dict / Tuple 直接子空间中的 Sequence（+105 / −1）"]
+    A3["维护者 araffin 自行改写，追加 2 个 commit<br/>180ab8c Simplify tests and checks ｜ 9c052b2 Add fix for mypy for gym&lt;1.0<br/>补 gym&lt;1.0 兼容 · 新增 OneOf 跳过分支（仅 warn=True 时生效）· 简化测试"]
+    A4["合并 7883ed4 · 2025-09-08（araffin）<br/>env_checker.py +32 / −4 ｜ test_env_checker.py +55 / −7 ｜ changelog.rst +2 / −1"]
+    A5["随 v2.7.1（2025-12-05）发布，固定基线 7cfb4dd 中仍然存在"]
+
+    B1["案例 B：无代码变更<br/>SB3 Issue #1950 · 2024-06-21 · predict() 收到 reset() 返回的 tuple"]
+    B2["维护者 araffin 的动作止于标签<br/>移除 bug · 加 custom gym env · 加 check the checklist"]
+    B3["报告者 KevinHan1209 自行关闭 · 2024-06-23<br/>状态 not_planned · 无 PR · 无代码变更<br/>维护者未作关闭决定 · 2 条评论均非维护者"]
+
+    A1 --> A2 --> A3 --> A4 --> A5
+    B1 --> B2 --> B3
+
+    A5 ~~~ B1

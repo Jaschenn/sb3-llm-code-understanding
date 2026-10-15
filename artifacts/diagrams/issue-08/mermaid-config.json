@@ -1,0 +1,11 @@
+{
+  "theme": "default",
+  "themeVariables": { "fontFamily": "PingFang SC, Arial, sans-serif" },
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "wrappingWidth": 420,
+    "nodeSpacing": 40,
+    "rankSpacing": 48
+  }
+}
