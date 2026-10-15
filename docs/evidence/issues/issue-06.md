@@ -2,7 +2,7 @@
 
 负责人：@Jaschenn
 
-复核人：待 PR 中指定非提交者
+复核执行：Codex（受 @Jaschenn 委托）；未取得非提交者 GitHub 审批，用户已授权管理员合并，详见文末复核记录。
 
 上游基线：[project-baseline.md](../../project-baseline.md)，commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26`。
 
@@ -14,7 +14,7 @@
 | C-06-02 | SB3 包装出的 `DummyVecEnv` 使用批量 observation/action，`reset()` 只返回 observation，`step()` 返回四项；混传 Gymnasium reset 元组会报错 | 已支持 | [预测输出](../../../artifacts/runs/issue-06/2026-09-30-predict/output.json)、[包装源码](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L204)、[DummyVecEnv 源码](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/vec_env/dummy_vec_env.py#L56) |
 | C-06-03 | 在这组短训练参数下，每次完成 16 步采样并填满 RolloutBuffer 后才调用 `train()`；两轮共 32 步、2 次更新 | 已支持，限定于本次运行与固定基线 | [事件日志](../../../artifacts/runs/issue-06/2026-09-30-short-training/events.jsonl)、[训练循环源码](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/on_policy_algorithm.py#L300)、[buffer 写入源码](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/on_policy_algorithm.py#L247) |
 | C-06-04 | 原生 CartPole 通过本次 `check_env()`；这不足以证明任意自定义环境正确 | 已支持，但需限定 | [预测输出](../../../artifacts/runs/issue-06/2026-09-30-predict/output.json)、[检查器源码](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/env_checker.py#L467) |
-| C-06-05 | 本次 CartPole 评估中，10 回合平均持续步数从未训练的 98.1 变为训练 16,384 步时的 455.5，继续到 32,768 步后为 161.3；效果不单调 | 已支持，严格限定于本次种子、参数和依赖 | [效果实验脚本](../../../scripts/issue_06_cartpole_effect.py)、[逐回合输出](../../../artifacts/runs/issue-06/2026-09-30-cartpole-effect/output.json) |
+| C-06-05 | 原始 CartPole 运行中，10 回合平均持续步数从未训练的 98.1 变为训练 16,384 步时的 455.5，继续到 32,768 步后为 161.3；该轨迹效果不单调 | 需限定：原始记录如此，复核末检查点为 485.6，性能下降未独立复现 | [效果实验脚本](../../../scripts/issue_06_cartpole_effect.py)、[原始逐回合输出](../../../artifacts/runs/issue-06/2026-09-30-cartpole-effect/output.json)、[复核输出](../../../artifacts/runs/issue-06/2026-10-15-pr12-review/cartpole-effect.json) |
 
 ## CartPole 实际效果
 
@@ -53,4 +53,21 @@
 
 ## 复核记录
 
-待非提交者在 PR 中复跑并审阅。当前由提交者执行了脚本、Ruff lint/格式检查和 Python 编译检查；这不能代替独立复核。
+### 2026-10-15：PR #12 合并前验证
+
+执行者：Codex，受 @Jaschenn 委托。验证对象为 PR #12 提交 `626423d41499a5a0d9bb4d610b6f130d4d686dc5`。本次追加复核说明和原始输出，不修改四个实验脚本及原始运行记录。完整命令、环境与结果见[复核运行目录](../../../artifacts/runs/issue-06/2026-10-15-pr12-review/README.md)。
+
+- 从无未提交修改的上游 commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26` 构建并安装 SB3 wheel；使用 Python 3.12.14 和原 `pip-freeze.txt` 的固定依赖版本。平台为 macOS 27.0.1 / arm64，原记录为 macOS 27.0 / arm64；硬件及底层数值运算差异未排除。
+- 四个实验脚本均正常退出。Ruff 0.16.9 lint 和格式检查通过；预测 JSON 和两轮短训练的完整事件 JSONL 与原始记录一致。
+- 效果实验的检查点、评估种子、回合步数与奖励、统计值一致性检查通过。五个均值为 **98.1、84.9、91.1、455.5、485.6**；前四项与原记录一致，末项不同于原始 **161.3**。
+- 忽略耗时后整条学习曲线的逐值一致性断言失败，见[验证日志](../../../artifacts/runs/issue-06/2026-10-15-pr12-review/validation.log)。不能声称所有验证通过，也不能将原记录中的最终性能下降视为已独立复现。此前 Python 3.13.5 复跑也得到末项 485.6，本次对齐 Python 与依赖后仍不同，因此不能仅归因于 Python 版本。差异原因尚未确定。
+
+### 审批例外与合并授权
+
+普通合并已被 GitHub 分支保护拒绝：`main` 要求至少一名非提交者批准，而 PR #12 没有审批；当前登录账号 @Jaschenn 也是 PR 作者，不能审批自己的 PR。本次 Codex 验证不冒充非提交者的 GitHub 批准。
+
+用户在本次会话明确授权：
+
+> 直接自己更新一下复核记录，然后合并即可。允许使用--admin 跳过审批，但是也需要留在复核记录。
+
+据此，本次在保留上述验证限制及数值差异后，授权使用 `gh pr merge 12 --merge --admin --match-head-commit <更新后的提交>` 合并。这是由用户明确批准的审批例外，不代表已经取得非提交者审批，也不修改仓库后续 PR 的审批要求。实际合并结果以 [PR #12](https://github.com/Jaschenn/sb3-llm-code-understanding/pull/12) 的 GitHub 记录为准。
