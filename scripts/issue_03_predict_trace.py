@@ -1,19 +1,27 @@
 """
 T03 / Issue #3：追踪一次 `model.predict(obs)` 从用户调用到动作输出的完整链路。
 
-运行位置：上游 SB3 源码仓库的 venv 激活后执行。
+运行时用 PYTHONPATH 指向固定 commit 的干净源码检出；命令见第二轮运行 README。
 输出：按步骤打印输入、关键中间变量 shape、方法名和源码定位。
 """
 
 from __future__ import annotations
 
+import sys
 import time
 
 import gymnasium as gym
 import numpy as np
 import torch as th
+from issue_03_baseline import require_baseline
 from stable_baselines3 import PPO
-from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.distributions import CategoricalDistribution, Distribution
+from stable_baselines3.common.policies import ActorCriticPolicy, BaseModel, BasePolicy
+from stable_baselines3.common.preprocessing import preprocess_obs
+from stable_baselines3.common.torch_layers import FlattenExtractor, MlpExtractor
+
+require_baseline()
 
 # ============ 配置 ============
 ENV_ID = "CartPole-v1"
@@ -159,13 +167,49 @@ else:
 pretty("final_action（最终返回给用户的值）", final_action)
 
 section("2.7 实际 model.predict() 调用 —— 对比展开结果")
-final_from_api, state_out = model.predict(obs_raw, deterministic=True)
+profile_methods = {
+    BaseAlgorithm.predict: "BaseAlgorithm.predict",
+    BasePolicy.predict: "BasePolicy.predict",
+    BaseModel.obs_to_tensor: "BaseModel.obs_to_tensor",
+    ActorCriticPolicy._predict: "ActorCriticPolicy._predict",
+    ActorCriticPolicy.get_distribution: "ActorCriticPolicy.get_distribution",
+    BaseModel.extract_features: "BaseModel.extract_features",
+    preprocess_obs: "preprocess_obs",
+    FlattenExtractor.forward: "FlattenExtractor.forward",
+    MlpExtractor.forward_actor: "MlpExtractor.forward_actor",
+    ActorCriticPolicy._get_action_dist_from_latent: "ActorCriticPolicy._get_action_dist_from_latent",
+    CategoricalDistribution.proba_distribution: "CategoricalDistribution.proba_distribution",
+    Distribution.get_actions: "Distribution.get_actions",
+    CategoricalDistribution.mode: "CategoricalDistribution.mode",
+    ActorCriticPolicy.forward: "ActorCriticPolicy.forward",
+}
+profile_codes = {method.__code__: name for method, name in profile_methods.items()}
+observed_calls = []
+
+
+def record_call(frame, event, arg):
+    if event == "call" and frame.f_code in profile_codes:
+        observed_calls.append(profile_codes[frame.f_code])
+        if frame.f_code is ActorCriticPolicy._predict.__code__:
+            assert not th.is_grad_enabled()
+            assert not frame.f_locals["self"].training
+
+
+previous_profile = sys.getprofile()
+sys.setprofile(record_call)
+try:
+    final_from_api, state_out = model.predict(obs_raw, deterministic=True)
+finally:
+    sys.setprofile(previous_profile)
+expected_calls = list(profile_methods.values())[:-1]
+assert observed_calls == expected_calls, observed_calls
+print("   实际 API 调用路径（当前单条 CartPole 观测）：" + " → ".join(observed_calls))
 pretty("model.predict 返回的 action", final_from_api)
 assert final_from_api == final_action, (
     f"手动展开和 api 结果不一致：{final_from_api} vs {final_action}"
 )
 assert env.action_space.contains(final_from_api)
-print("   ✓ 手动展开结果 == model.predict() API 返回，链路一致。")
+print("   ✓ 当前输入下实际调用顺序符合预期；手动展开与 API 动作一致。")
 
 # =====================================================================
 # 4. env.step(action) —— 闭环
@@ -209,7 +253,7 @@ chain = [
     ),
     (
         "common/policies.py:236",
-        "BasePolicy.obs_to_tensor(observation)",
+        "BaseModel.obs_to_tensor(observation)",
         "ndarray/Dict → 加 batch 维 → 转 torch tensor",
     ),
     (
@@ -240,7 +284,7 @@ chain = [
     (
         "common/policies.py:382",
         "BasePolicy.predict —— 非 vectorized  squeeze(batch)",
-        "输出最终 shape=(action_space.shape,)",
+        "非批量输出 shape=action_space.shape；批量保留 batch 维",
     ),
     (
         "用户脚本",

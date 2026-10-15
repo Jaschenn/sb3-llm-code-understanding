@@ -1,101 +1,31 @@
 # Issue #3：predict() 端到端调用链
 
-负责人：@dingdadabset  
+负责人：@dingdadabset
+
 复核人：@Jaschenn
-上游基线：见 `docs/project-baseline.md`（stable-baselines3 commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26`）
 
-## 可检验结论
+上游基线：commit `7cfb4dd6055e74b5caa4ed4d6777492209946e26`，见[基线说明](../../project-baseline.md)。
 
-| 本 Issue 内编号 | 结论 | 状态（待验证/已支持/已否定/需限定） | 证据链接 |
-|---|---|---|---|
-| C-03-01 | `BaseAlgorithm.predict()` 只是把调用原封不动转发给 `self.policy.predict()`，没有额外逻辑 | 已支持 | `stable_baselines3/common/base_class.py:536-556`；运行日志脚本 `scripts/issue_03_predict_trace.py` 步骤 2 与步骤 2.7 的一致性断言（最后 assert 通过） |
-| C-03-02 | `BasePolicy.predict()` 内部执行顺序固定为：切 eval 模式 → tuple 输入拦截 → obs_to_tensor → no_grad 下的 `_predict` → tensor2numpy+reshape → Box 空间 clip/unscale → 非 vectorized squeeze batch → return (action, state) | 已支持 | `stable_baselines3/common/policies.py:331-386`；运行脚本 step2 各子步骤逐条对应 |
-| C-03-03 | 若用户把 `env.reset()` 返回的 `(obs, info)` tuple 直接喂给 `model.predict()`，SB3 会在 `BasePolicy.predict` 开头抛 `ValueError`，提示「mixing Gym API / VecEnv API」 | 已支持 | `stable_baselines3/common/policies.py:356-363`；测试 `tests/test_predict.py:121-127 test_mixing_gym_vecenv_api` 就是验证这一断言 |
-| C-03-04 | `obs_to_tensor()` 的核心作用是：补齐缺失的 batch 维度（shape `(4,)` → `(1,4)`）并转 `torch.Tensor`；同时返回的 `vectorized_env` 标记决定最终是否 squeeze | 已支持 | `stable_baselines3/common/policies.py:236-277`；运行日志 step 2.2 里 `obs_raw shape=(4,)` → `obs_tensor shape=(1,4)`，`vectorized_env=False` |
-| C-03-05 | `ActorCriticPolicy._predict()`（PPO 默认 policy 类）等价于 `get_distribution(obs).get_actions(det)`；其中 `get_distribution` 会走 extract_features → mlp_extractor.forward_actor → action_net(logits) → 构造 CategoricalDistribution | 已支持 | `common/policies.py:709-717`、`743-752`、`684-707`；运行脚本 step 2.3 明确打印 distribution 类型为 `CategoricalDistribution` 及 det=True 返回 `argmax(logits)` |
-| C-03-06 | `predict(..., deterministic=True)` 对离散动作走 `argmax(logits)`；对连续 Box 如果设置了 `squash_output=True` 会走 `unscale_action()` 把 tanh 后的 `[-1,1]` 反变换回 `[low, high]`；否则 `clip(low,high)`；对 Discrete 这一步跳过 | 已支持 | `common/policies.py:372-384`；运行日志 step 2.5 明确打印「CartPole 是 Discrete，本步不执行」；对连续动作的分支在同一段源码里可直接阅读 |
-| C-03-07 | 「原生 Gymnasium Env」 与 「SB3 VecEnv」 的关键 API 差 异：前者 `reset()` 返回 `(obs, info)` 2 元组、`step(a)` 返回 `(obs, r, terminated, truncated, info)` 5 元组；后者 `reset()` **只返回 obs**（形状已经加了 n_envs 批维）、`step(a)` 返回 `(obs, r, dones, infos)` 4 元组，且 dones=bool[] / infos=list[dict] | 需限定 | 运行日志 step1 vs 源码 `common/vec_env/base_vec_env.py`（见 `base_class.py:204 _wrap_env` 将非 VecEnv 包成 DummyVecEnv）；需要区分"训练时内部用的 VecEnv"和"用户自己持有的普通 Gym Env"两种上下文 |
-| C-03-08 | `predict()` 入口切 eval 模式，仅 `_predict()` 调用位于 `torch.no_grad()` 内；上游测试中同一模型、同一 observation 的确定性预测结果一致，且 BatchNorm 统计量不变 | 已支持，限定于被测网络与运行条件 | `common/policies.py:352,367`；测试 `tests/test_train_eval_mode.py:346-380 test_predict_with_dropout_batch_norm`；本次复跑结果见文末 |
+## 结论与逐项证据
 
-## 证据记录
+范围：固定基线的 PPO + ActorCriticPolicy，主实验为 CartPole-v1 / MlpPolicy。手动展开与 API 动作相同只证明该输入的输出一致；本轮另用 sys.setprofile 观察真实 API 方法调用，并与源码逐项对应。静态打印的调用链清单不充当运行证据。
 
-### C-03-01（BaseAlgorithm.predict → policy.predict 转发）
+当前验证材料见[第二轮运行记录](../../../artifacts/runs/issue-03/2026-10-15-audit/README.md)。状态使用“已支持 / 需限定 / 待验证 / 已否定”；状态针对表中限定后的命题，不等于该模块所有分支都已验证。
 
-源码：`common/base_class.py:536-556`
-```python
-def predict(self, observation, state=None, episode_start=None, deterministic=False):
-    return self.policy.predict(observation, state, episode_start, deterministic)
-```
-仅此一行，无其它逻辑。运行验证：脚本 step 2.7 中手动展开 BasePolicy 各步骤得到的 `final_action` 与 `model.predict()` API 返回 `final_from_api` 通过 `assert final_from_api == final_action`（数值完全一致）。
-
-### C-03-02（BasePolicy.predict 八步顺序）
-
-源码：`common/policies.py:331-386`，运行脚本 `scripts/issue_03_predict_trace.py` step 2 每一节对应源码位置都直接在 section 标题上标注了行号。脚本输出文件：`artifacts/runs/issue-03/2026-10-09-predict-trace/output.log`。
-
-### C-03-03（tuple 输入拦截）
-
-源码：`common/policies.py:356-363`
-```python
-if isinstance(observation, tuple) and len(observation) == 2 and isinstance(observation[1], dict):
-    raise ValueError("You have passed a tuple to the predict() function instead of a Numpy array or a Dict. ...")
-```
-测试佐证：`tests/test_predict.py:121-127 test_mixing_gym_vecenv_api`
-```python
-wrong_obs = env.reset()  # returns (obs, info) tuple
-with pytest.raises(ValueError, match=r"mixing Gym API"):
-    model.predict(wrong_obs)
-```
-
-### C-03-04（obs_to_tensor 补批维）
-
-源码：`common/policies.py:236-277`
-```python
-observation = observation.reshape((-1, *self.observation_space.shape))
-obs_tensor = obs_as_tensor(observation, self.device)
-```
-运行日志：`artifacts/runs/issue-03/2026-10-09-predict-trace/output.log` step 2.2：
-```
-obs_raw  shape=(4,) dtype=float32
-obs_tensor shape=(1, 4) dtype=torch.float32
-vectorized_env=False
-```
-
-### C-03-05（_predict → get_distribution → Categorical → argmax）
-
-源码：
-- `common/policies.py:709-717`
-- `common/policies.py:743-752` → `_get_action_dist_from_latent L684-707` 对 Discrete 走 `self.action_dist.proba_distribution(action_logits=...)`，
-- 最终 `get_actions(det=True)` 在离散分布里是 `th.argmax(logits, dim=-1)`。
-运行日志 step 2.3：distribution 类型显示 `CategoricalDistribution`，deterministic=True 返回 `value=[0]`。
-
-### C-03-06（Box 空间 clip / unscale 分支）
-
-源码：`common/policies.py:372-384`。CartPole Discrete(2) 不进入 Box 分支（日志 step2.5 明确标注）。对连续空间（Pendulum-v1 / Box）的行为通过源码可读：`squash_output → unscale_action`，否则 `np.clip(actions, low, high)`。这一点在 `common/policies.py:388-413` 的 scale/unscale 工具函数上也有完整断言。
-
-### C-03-07（原生 Gym vs VecEnv 接口差异）
-
-- 原生 Gymnasium：`reset() -> (obs, info)`，`step(a) -> (new_obs, reward, terminated, truncated, info)` （5 元组）
-- SB3 VecEnv：`reset() -> obs` 直接返回 ndarray shape=(n_envs, *obs_shape)；`step(a) -> (obs, rewards, dones, infos)` （4 元组），terminated/truncated 合并为 dones
-证据来源：
-- 脚本 step1 实测 `env.reset()` 返回长度 2；step3 实测 `env.step()` 返回长度 5。
-- `common/base_class.py:204 _wrap_env` 对非 VecEnv 做 `DummyVecEnv([lambda: env])`；`common/vec_env/dummy_vec_env.py` 源码可看到 step 返回 4 元组。
-- BasePolicy.predict 中针对 tuple 的报错正是为了拦住「用户把 Gym reset 返回的 tuple 直接用」的常见错误，C-03-03 的测试证明这是一条高频踩坑路径。
-限制：如果用户把原始 Env 单独用于推理，就不要混淆 API；若用户走 `model.get_env().reset()`（拿到的就是 VecEnv API），则 reset 直接拿 obs 没 info。
-
-### C-03-08（predict 幂等性 + eval mode）
-
-源码：
-- `predict()` 入口 `set_training_mode(False)`（policies.py:352），调用 `_predict` 用 `with th.no_grad()`（L367）。
-测试佐证：`tests/test_train_eval_mode.py:346-380 test_predict_with_dropout_batch_norm` 对含 BatchNorm+Dropout 的网络，做：
-```python
-first_pred, _ = model.predict(observation, deterministic=True)
-for _ in range(5):
-    pred, _ = model.predict(observation, deterministic=True)
-    np.testing.assert_allclose(first_pred, pred)
-```
-并断言 batch_norm 的 running_mean 前后不变 → 证明 predict 不会改变 BatchNorm 统计量，也不会走 dropout 随机分支。
+| 编号 | 限定后的可检验结论 | 状态 | 固定源码 | 对应运行 / 检查 |
+|---|---|---|---|---|
+| C-03-01 | PPO 沿用的 BaseAlgorithm.predict 将参数转交 self.policy.predict；不推广到自行重写 predict 的算法 | 已支持 | [BaseAlgorithm.predict](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L537) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log)：profile 观察两个入口；转发参数的实现由源码核对，不从动作相等推断 |
+| C-03-02 | BasePolicy.predict 切 eval、拦截特定 tuple、转换观测，在 no_grad 内调用 _predict，再 reshape、按动作空间后处理并按 vectorized 标记 squeeze | 已支持 | [BasePolicy.predict](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L331) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log)：监测当前 CartPole 输入的真实方法顺序及 _predict 内 eval/no_grad；源码补充各分支；不宣称所有自定义 policy 都符合相同内部链 |
+| C-03-03 | 长度 2 且第二项为 dict 的 Gymnasium reset tuple 被 predict 拒绝；step 五项用四变量接收则先在用户代码解包处失败 | 已支持 | [tuple 防护](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L356) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log)：分别实际触发并断言两个错误，不混为一条失败路径 |
+| C-03-04 | obs_to_tensor 保留或补齐 batch 维，返回 tensor 与 vectorized 标记；本次覆盖 CartPole ndarray 单观测和 Dict 单观测/批量 | 已支持 | [BaseModel.obs_to_tensor](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L236) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log) 的 (4,)→(1,4)；[契约检查](../../../scripts/issue_03_contract_checks.py)::test_dict_and_batch_observations。图像转置和混合 Dict 形状不在本次运行覆盖内 |
+| C-03-05 | PPO 的 ActorCriticPolicy 在本次 Discrete(2) 输入下走 _predict→get_distribution→特征/actor 网络→Categorical→确定性 mode；不调用 ActorCriticPolicy.forward | 已支持 | [_predict](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L709)、[get_distribution](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L743) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log)：profile 记录预处理、特征提取、分布构造及 mode 顺序，同时监测 forward；仅针对当前输入路径 |
+| C-03-06 | 离散确定性动作取 Categorical argmax；Box 在 squash_output=False 时 clip，True 时 unscale 至环境边界 | 已支持 | [Box 后处理](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L372) | [真实调用输出](../../../artifacts/runs/issue-03/2026-10-15-audit/output.log) 的 argmax 断言；[契约检查](../../../scripts/issue_03_contract_checks.py)::test_box_clips_unbounded_actions / test_box_unscales_controlled_squashed_action。unscale 用固定 _predict 输出隔离后处理，不声称验证了 gSDE 随机采样 |
+| C-03-07 | 原生 Gymnasium reset/step 为 2/5 项；DummyVecEnv reset 只给批量 obs，step 为 4 项，reset info 存于 reset_infos | 已支持 | [DummyVecEnv](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/vec_env/dummy_vec_env.py#L56) | [契约检查](../../../scripts/issue_03_contract_checks.py)::test_raw_gym_and_vecenv_return_contracts；本次为普通 Box 观测，不将 ndarray 形状推广到所有观测空间 |
+| C-03-08 | 上游被测含 BatchNorm/Dropout 的网络在确定性重复预测时输出一致、指定 BN 统计量不变；不据此保证任意自定义网络状态均不变 | 需限定 | [eval/no_grad](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L352)、[上游测试](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/tests/test_train_eval_mode.py#L346) | 本轮重新执行 test_predict_with_dropout_batch_norm；该测试只检查选定统计量和输出，不是全模型任意状态的证明 |
 
 ## AI 使用记录
+
+以下保留原始提问和回答摘要。原记录中“输出相同证明内部路径一致”的验证解释不足，现以本轮实际 profile 和上表的限定结论为准；输出相等本身只证明被测输入的动作一致。连续分布的确定性 mode 也不应混同为分类 argmax；Box clip/unscale 由空间与 squash_output 决定。
 
 | AI 编号 | 模型与提问原文/链接 | AI 回答摘要 | 验证动作 | 观察结果 | 修正后的表述 |
 |---|---|---|---|---|---|
@@ -117,3 +47,15 @@ for _ in range(5):
 本次环境为 Python 3.12.14 / PyTorch 2.14.0 / Gymnasium 1.3.0 / SB3 2.9.2a0，SB3 从固定基线源码构建 wheel。修正版脚本正常退出，Ruff lint/格式检查通过；上游 tuple 混用和含 Dropout/BatchNorm 的预测测试共 **11 passed**。命令、脚本快照与原始测试输出见[复核运行目录](../../../artifacts/runs/issue-03/2026-10-15-review/README.md)。原运行目录保留，不用新输出覆盖历史记录。Mermaid CLI 12.0.0 已成功渲染预测图。
 
 固定源码索引：[predict 转发](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/base_class.py#L537)、[policy 预测](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/policies.py#L331)、[DummyVecEnv.step_wait](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/common/vec_env/dummy_vec_env.py#L56)、[PPO epoch 计数](https://github.com/DLR-RM/stable-baselines3/blob/7cfb4dd6055e74b5caa4ed4d6777492209946e26/stable_baselines3/ppo/ppo.py#L280)。
+
+### 第二轮审慎检查
+
+复核人：@Jaschenn。针对上一轮提交 `a1e87b3` 遗留的证据问题，逐项重写了当前结论表与报告正文。
+
+- 新增导入来源核验：实际包必须来自固定 commit 的干净 Git 源码检出；拒绝普通 wheel、错误 commit 与未提交改动，不能只打印固定源码标签。测试路径与运行路径均记录到日志。
+- 用 sys.setprofile 观察真实 predict 调用，检查 _predict 内 eval/no_grad；监测 ActorCriticPolicy.forward，并断言本次未调用。方法清单的打印和手动输出一致不再充当内部路径的证明。
+- 针对 Dict 单条/批量、原生 Env 与 VecEnv、Box clip/unscale 分别运行检查；受控 unscale 与真实采样的边界写入结论表。
+- 删除“高频”“所有网络状态不变”等无充分依据的推论；明确 BN 上游用例、当前标准策略和任意自定义策略之间的证据边界。
+- T04 的对应结论、归一化条件、续训、数据展平、KL 与 callback 退出等说明在报告中同步收紧；报告明确 PR #18 的依赖。
+
+本轮完整结果和命令见[第二轮运行记录](../../../artifacts/runs/issue-03/2026-10-15-audit/README.md)。旧目录中的无基线防护脚本仅作为历史快照，不作为当前复现入口。
