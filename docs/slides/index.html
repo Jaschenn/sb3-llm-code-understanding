@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 读得很快，核验才是工作量</title>
+<!-- 字体来自 Google Fonts；离线时回退到系统中文字体与等宽字体，版式不受影响 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME：校对稿（diff）风格
+   红 = 被否定的说法，绿 = 核验后的结论
+   =========================================== */
+:root{
+  --stage-bg:#d9d4c7;
+  --slide-bg:#f3f0e8;
+  --ink:#14213d;
+  --ink-soft:rgba(20,33,61,.62);
+  --red:#d1243a;
+  --grn:#1b7f4b;
+  --amber:#a8650a;
+  --gutter:#e6e1d3;
+  --font-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ===========================================
+   FIXED 16:9 STAGE（viewport-base.css 全文）
+   =========================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#000)}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#000)}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#fff)}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#fff)}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1}
+img,video,canvas,svg{max-width:100%;max-height:100%}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000}
+@media print{
+  html,body{width:1920px;height:auto;overflow:visible;background:#fff}
+  .deck-viewport{position:static;overflow:visible;background:#fff}
+  .deck-stage{position:static;width:auto;height:auto;transform:none!important;background:none}
+  .slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always}
+  .slide:last-child{break-after:auto;page-break-after:auto}
+  .deck-controls{display:none!important}
+  .reveal{opacity:1!important;transform:none!important}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}}
+
+/* ===========================================
+   SLIDE CHROME：行号槽、页眉、页脚证据编号
+   =========================================== */
+.slide{font-family:var(--font-body);color:var(--ink)}
+.gut{position:absolute;left:0;top:0;bottom:0;width:150px;background:var(--gutter);border-right:2px solid rgba(20,33,61,.13)}
+.ln{position:absolute;left:0;width:150px;padding-right:34px;text-align:right;font:400 26px var(--font-mono);color:rgba(20,33,61,.45)}
+.hdr{position:absolute;left:210px;top:84px;font:400 32px var(--font-mono);color:var(--ink-soft)}
+.hdr b{color:var(--ink);font-weight:700}
+.ev{position:absolute;left:210px;bottom:54px;font:400 30px var(--font-mono);color:var(--ink-soft)}
+.ev b{color:var(--ink);font-weight:700}
+.pg{position:absolute;right:90px;bottom:50px;font:400 28px var(--font-mono);color:var(--ink-soft)}
+.main{position:absolute;left:210px;right:110px;top:150px;bottom:130px;display:flex;flex-direction:column;justify-content:center}
+
+/* ===========================================
+   COMPONENTS
+   =========================================== */
+h2{font-size:78px;line-height:1.25;font-weight:900;letter-spacing:0}
+.lead{font-size:50px;line-height:1.6;color:var(--ink)}
+.dim{color:var(--ink-soft)}
+.mono{font-family:var(--font-mono)}
+
+/* diff 行：整个演示的核心图形 */
+.diff{position:relative;display:block;padding:26px 40px 26px 140px;font-size:62px;line-height:1.4;font-weight:700;margin-bottom:20px}
+.diff::before{position:absolute;left:40px;top:26px;font:700 76px var(--font-mono)}
+.diff.del{background:rgba(209,36,58,.09);color:var(--ink)}
+.diff.del::before{content:"−";color:var(--red)}
+.diff.del .t{text-decoration:line-through;text-decoration-thickness:5px;text-decoration-color:var(--red);color:rgba(20,33,61,.6)}
+.diff.nostrike .t{text-decoration:none;color:var(--ink)}
+.diff.add{background:rgba(27,127,75,.1)}
+.diff.add::before{content:"+";color:var(--grn)}
+.diff small{display:block;margin-top:8px;font:400 33px var(--font-mono);color:var(--ink-soft);font-weight:400}
+
+.tag{display:inline-block;font:700 32px var(--font-mono);padding:5px 20px;border:2px solid currentColor;margin-right:12px;vertical-align:middle}
+.tag.red{color:var(--red)}.tag.grn{color:var(--grn)}.tag.ink{color:var(--ink)}
+
+.chips{display:flex;gap:22px;flex-wrap:wrap}
+.chip{border:2px solid rgba(20,33,61,.25);padding:18px 32px;font:700 44px var(--font-mono);background:rgba(255,255,255,.55)}
+.chip span{font:400 30px var(--font-body);color:var(--ink-soft);margin-left:10px}
+
+.rules{display:grid;gap:44px}
+.rule{display:grid;grid-template-columns:110px 1fr;align-items:start;font-size:58px;line-height:1.45;font-weight:500}
+.rule i{font:700 50px var(--font-mono);font-style:normal;background:var(--ink);color:var(--slide-bg);padding:6px 0;text-align:center;margin-top:6px}
+.rule small{display:block;font-size:38px;color:var(--ink-soft);font-weight:400;margin-top:4px}
+
+/* 状态四词 */
+.states{display:flex;gap:18px;margin-top:6px}
+
+/* 小面板 */
+.panel{border:2px solid rgba(20,33,61,.22);background:rgba(255,255,255,.55);padding:30px 36px}
+.panel h3{font:700 28px var(--font-mono);color:var(--ink-soft);margin-bottom:16px}
+.panel p{font-size:38px;line-height:1.55}
+
+/* 继承简图（第 3 页） */
+.tree{display:grid;grid-template-columns:repeat(3,1fr);gap:0 30px;font:700 38px var(--font-mono);align-items:start}
+.node{border:2px solid var(--ink);background:#fff;padding:18px 20px;text-align:center}
+.node.leaf{border-color:rgba(20,33,61,.4);font-weight:400;font-size:34px;margin-top:14px}
+.col{display:flex;flex-direction:column}
+.arrow{text-align:center;color:var(--ink-soft);font-size:28px;line-height:1.2;margin:6px 0}
+
+/* 对照表（第 5 页） */
+.cmp{width:100%;border-collapse:collapse;font-size:52px}
+.cmp td,.cmp th{padding:28px 32px;text-align:left;border-bottom:2px solid rgba(20,33,61,.15)}
+.cmp th{font:700 32px var(--font-mono);color:var(--ink-soft)}
+.cmp code{font:700 48px var(--font-mono)}
+.ok{color:var(--grn);font-weight:700}.no{color:var(--red);font-weight:700}
+
+/* 统计条（第 6 页） */
+.bar{display:flex;height:100px;font:700 52px var(--font-mono);color:#fff;margin:18px 0 12px}
+.bar div{display:flex;align-items:center;padding-left:22px}
+.bar .a{background:var(--red);flex:8}.bar .b{background:var(--amber);flex:7}.bar .c{background:var(--grn);flex:3}
+.legend{display:flex;gap:0;font-size:36px;line-height:1.4}
+.legend div{padding-right:14px}
+.legend .a{flex:8;color:var(--red)}.legend .b{flex:7;color:var(--amber)}.legend .c{flex:3;color:var(--grn)}
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px 48px;margin-top:34px;font-size:42px}
+.cat{display:flex;justify-content:space-between;gap:14px;border-bottom:2px solid rgba(20,33,61,.14);padding:12px 0}
+.cat span{font:400 28px var(--font-mono);color:var(--ink-soft);white-space:nowrap;align-self:center}
+.cta{margin-top:34px;padding:26px 36px;border-left:8px solid var(--ink);background:rgba(20,33,61,.07);font-size:40px;line-height:1.55}
+
+/* 封面 */
+.cover h1{position:absolute;left:210px;top:0}
+.cover .row{position:absolute;left:150px;right:0;height:190px}
+.cover .row.del{top:250px;background:rgba(209,36,58,.09)}
+.cover .row.add{top:460px;background:rgba(27,127,75,.1)}
+.cover .row i{position:absolute;left:44px;top:52px;font:700 76px var(--font-mono);font-style:normal}
+.cover .row.del i{color:var(--red)}.cover .row.add i{color:var(--grn)}
+.cover .row span{position:absolute;left:150px;top:36px;font-size:104px;font-weight:900;white-space:nowrap}
+.cover .row.del span{text-decoration:line-through;text-decoration-thickness:9px;text-decoration-color:var(--red);color:rgba(20,33,61,.58)}
+.cover .sub{position:absolute;left:210px;top:730px;width:1450px;font-size:42px;line-height:1.65}
+.cover .stamp{position:absolute;right:110px;bottom:54px;font:700 30px var(--font-mono);color:var(--red);border:3px solid var(--red);padding:8px 22px}
+
+/* 出场动画：逐条出现；导出 PDF 时由脚本强制可见 */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.reveal.on{opacity:1;transform:none}
+
+/* 页内备注只供演讲者面板读取，不在舞台上显示 */
+.note{display:none}
+
+/* 演讲者提示与进度（舞台之外的界面） */
+.progress{position:fixed;left:0;top:0;height:6px;background:var(--red);width:0;transition:width .3s var(--ease);z-index:1001}
+.notes{position:fixed;left:0;right:0;bottom:0;max-height:34vh;overflow:auto;background:rgba(20,33,61,.96);color:#f3f0e8;padding:18px 28px;font:400 20px/1.7 var(--font-body);display:none;z-index:1002}
+.notes.show{display:block}
+.notes b{color:#ffd166;font-family:var(--font-mono)}
+.hint{position:fixed;right:16px;bottom:12px;font:400 14px var(--font-mono);color:rgba(20,33,61,.5);z-index:1000}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ===== 0 封面 ===== -->
+<section class="slide cover active" data-time="0:20">
+  <div class="gut"></div><div class="ln" style="top:268px">41</div><div class="ln" style="top:478px">42</div><div class="ln" style="top:90px">1</div>
+  <div class="hdr"><b>软件测试和分析</b> · 课程实训汇报</div>
+  <div class="row del reveal" data-step="1"><i>−</i><span>AI 读得很快</span></div>
+  <div class="row add reveal" data-step="2"><i>+</i><span>核验才是工作量</span></div>
+  <div class="sub reveal" data-step="3">用大语言模型理解 Stable-Baselines3：18 条 AI 记录里，没有一条无条件正确</div>
+  <div class="ev">2026 年 10 月</div>
+  <div class="stamp">已核验</div>
+  <aside class="note"><b>0:00–0:20</b> 先放红色那句，停一拍，再出绿色。开场一句话：这个汇报讲的不是 AI 能不能读代码，而是读完之后，我们花了多少功夫去证明它对不对。</aside>
+</section>
+
+<!-- ===== 1 问题与范围 ===== -->
+<section class="slide" data-time="1:00">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div><div class="ln" style="top:520px">2</div>
+  <div class="hdr"><b>01</b> · 问题与范围</div>
+  <div class="main">
+    <div class="diff add reveal" data-step="1">我们要回答：SB3 怎样把一个 Gymnasium 环境，组织成可验证的预测和训练流程？<small>主问题</small></div>
+    <div class="diff del reveal" data-step="2"><span class="t">PPO 为什么收敛、算法性能好不好</span><small>不做：数学收敛性、性能评估、Contrib / SBX</small></div>
+    <div class="chips reveal" data-step="3" style="margin-top:40px">
+      <div class="chip">64<span>个 Python 文件</span></div>
+      <div class="chip">15,693<span>行</span></div>
+      <div class="chip">6<span>个算法</span></div>
+      <div class="chip">7cfb4dd<span>固定 commit</span></div>
+    </div>
+  </div>
+  <div class="ev">证据 <b>C-01-01</b> · 报告第 1 章</div><div class="pg">1 / 8</div>
+  <aside class="note"><b>0:20–1:20</b> SB3 是 PyTorch 的强化学习算法库。我们只回答软件层面的问题：对象怎么协作、控制流怎么走、失败发生在哪。所有源码引用都固定在同一个 commit，这样每个人的行号都能互相核对。</aside>
+</section>
+
+<!-- ===== 2 方法 ===== -->
+<section class="slide" data-time="1:10">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>02</b> · 方法：AI 的回答只是假设</div>
+  <div class="main">
+    <div class="rules">
+      <div class="rule reveal" data-step="1"><i>1</i><div>固定一个基线 commit<small>所有行号可互相复核</small></div></div>
+      <div class="rule reveal" data-step="2"><i>2</i><div>AI 的回答先记为「待验证」<small>记录模型、提问、核验方法和结果</small></div></div>
+      <div class="rule reveal" data-step="3"><i>3</i><div>重要结论要两类独立证据<small>源码、测试、运行、Issue / PR 历史，缺一类就不升级</small></div></div>
+    </div>
+    <div class="states reveal" data-step="4" style="margin-top:52px">
+      <span class="tag ink">待验证</span><span class="tag grn">已支持</span><span class="tag red">已否定</span><span class="tag ink" style="color:var(--amber)">需限定</span>
+    </div>
+  </div>
+  <div class="ev">证据 报告第 1.5、6.1 节 · <b>CONTRIBUTING</b></div><div class="pg">2 / 8</div>
+  <aside class="note"><b>1:20–2:30</b> 三条规则。重点讲第 2 条：AI 的回答在核验之前不进结论表。最后指一下四个状态词，后面几页都会用到「需限定」，它的意思是：结论成立，但有前提。</aside>
+</section>
+
+<!-- ===== 3 读到了什么 ===== -->
+<section class="slide" data-time="1:10">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>03</b> · 我们读到了什么</div>
+  <div class="main">
+    <div class="lead reveal" data-step="1" style="margin-bottom:34px"><span class="tag ink">预测</span><span class="mono" style="font-size:44px">BaseAlgorithm.predict → BasePolicy.predict → _predict</span><br><span class="dim" style="font-size:38px">PPO 的 predict 不进入 forward；采样时才调用 forward</span></div>
+    <div class="lead reveal" data-step="2" style="margin-bottom:44px"><span class="tag ink">训练</span><span class="mono" style="font-size:44px">learn → collect_rollouts → train</span><br><span class="dim" style="font-size:38px">每轮采样开头，RolloutBuffer 都会 reset()</span></div>
+    <div class="tree reveal" data-step="3">
+      <div class="col"><div class="node">BaseAlgorithm</div></div>
+      <div class="col"><div class="node">OnPolicyAlgorithm</div><div class="node leaf">PPO · A2C</div></div>
+      <div class="col"><div class="node">OffPolicyAlgorithm</div><div class="node leaf">DQN · SAC · TD3 → DDPG</div></div>
+    </div>
+  </div>
+  <div class="ev">证据 <b>C-01-02</b> · <b>C-03-05</b> · <b>C-04-05</b> · 图 3-1</div><div class="pg">3 / 8</div>
+  <aside class="note"><b>2:30–3:40</b> 这页只做铺垫，不要讲细。让大家记住一个东西：RolloutBuffer，每一轮采样开头都会 reset。下一页的案例就是关于它。DDPG 继承的是 TD3，不是直接继承 OffPolicy，这是 T01 复核里纠正过的。</aside>
+</section>
+
+<!-- ===== 4 案例一 ===== -->
+<section class="slide" data-time="1:50">
+  <div class="gut"></div><div class="ln" style="top:178px">41</div><div class="ln" style="top:380px">42</div>
+  <div class="hdr"><b>04</b> · 案例一：RolloutBuffer.reset()</div>
+  <div class="main">
+    <div class="diff del reveal" data-step="1"><span class="t">reset() 不会重新分配数组，只重置指针</span><small>AI 的回答 · 工程上很常见，第一次被记成「已核验基本正确」</small></div>
+    <div class="lead reveal" data-step="2" style="margin:28px 0 10px"><span class="tag ink">核验</span>保留旧引用 → 填成 9 → 调用 reset() → 断言「新对象且全零」</div>
+    <div class="diff add reveal" data-step="3">reset() 重新分配并归零 observations<small>buffers.py:L391 · 运行输出：✓ reset 重新分配并归零 observations</small></div>
+    <div class="dim reveal" data-step="4" style="font-size:42px;margin-top:24px">看起来合理的优化说法，最容易被默认接受。</div>
+  </div>
+  <div class="ev">证据 <b>AI-04-02</b> · <b>C-04-05</b> · artifacts/runs/issue-04</div><div class="pg">4 / 8</div>
+  <aside class="note"><b>3:40–5:30</b> 先只放红色那条，问大家：你们觉得对吗？停 3 秒。再放核验方法，最后放绿色。关键信息：第一次的「已核验」只是读代码推理，没有让旧引用暴露差别；后来复核用一个小断言就分出了对错。</aside>
+</section>
+
+<!-- ===== 5 案例二 ===== -->
+<section class="slide" data-time="1:10">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>05</b> · 案例二：假设对了，但漏了前提</div>
+  <div class="main">
+    <div class="lead reveal" data-step="1" style="margin-bottom:26px"><span class="tag red">AI</span>Sequence / Graph / OneOf 观测空间下，check_env「会警告并跳过返回值检查」</div>
+    <table class="cmp reveal" data-step="2">
+      <tr><th>调用</th><th>环境返回非法观测</th></tr>
+      <tr><td><code>check_env(warn=True)</code></td><td class="no">仍然通过，只有 1 条警告</td></tr>
+      <tr><td><code>check_env(warn=False)</code></td><td class="ok">AssertionError</td></tr>
+    </table>
+    <div class="cta reveal" data-step="3">AI 没说错，但省略了前提。通过 check_env，不能当作环境正确的充分条件。<br><span class="mono" style="font-size:34px;color:var(--amber)">状态：需限定</span></div>
+  </div>
+  <div class="ev">证据 <b>AI-05-02</b> · <b>C-05-07</b> · 实验 W09 / F12</div><div class="pg">5 / 8</div>
+  <aside class="note"><b>5:30–6:40</b> 和案例一对比：这次 AI 的方向是对的，实验也证实了。问题在于它没有告诉我们「在什么条件下成立」。靠 warn=True 和 warn=False 两组对照才把前提找出来。</aside>
+</section>
+
+<!-- ===== 6 复核记录 + 第七章 ===== -->
+<section class="slide" data-time="1:20">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>06</b> · 18 条 AI 记录，和复核里反复出现的错</div>
+  <div class="main">
+    <div class="bar reveal" data-step="1"><div class="a">8</div><div class="b">7</div><div class="c">3</div></div>
+    <div class="legend reveal" data-step="1"><div class="a">被证伪或表述不准</div><div class="b">条件或范围不足</div><div class="c">无需修正</div></div>
+    <div class="cats reveal" data-step="2">
+      <div class="cat">与源码细节不符<span>T01 T03 T04</span></div>
+      <div class="cat">过度推论<span>T03 T04 T08</span></div>
+      <div class="cat">证据来源不受控<span>T03 T04 T05</span></div>
+      <div class="cat">展示性输出代替断言<span>T03 T04</span></div>
+      <div class="cat">遗漏成立前提<span>T04 T05 T08</span></div>
+      <div class="cat">示例与表述不可复现<span>T01 T03</span></div>
+    </div>
+    <div class="cta reveal" data-step="3">做法：把发现错误的方法固化成脚本（T08 新增 3 项，16 项全过）。<br>维护侧同理：#2174 里 AI 的补丁，经人工改写后才合并。</div>
+  </div>
+  <div class="ev">证据 报告第 6.2、8.2 节 · <b>C-08-03</b> · <b>C-08-07</b> · <b>V-08-14~16</b></div><div class="pg">6 / 8</div>
+  <aside class="note"><b>6:40–8:00</b> 先讲上面的条：18 条里 8 条被证伪或不准，7 条条件不足，只有 3 条无需修正，注意这 3 条里有 2 条只是数文件、列目录。再看下面的类别，每类都出现在至少两个任务里（还有第 7 类：T06 的数字复跑不一致，只出现在一个任务里，这页没放）。最后一句话带过第七章：维护历史里同样如此。</aside>
+</section>
+
+<!-- ===== 7 学到的 ===== -->
+<section class="slide" data-time="1:00">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>07</b> · 我们学到的</div>
+  <div class="main">
+    <div class="diff add reveal" data-step="1">AI 的错，多是「看着合理」和「省略前提」<small>不是离谱的胡说，所以更难发现</small></div>
+    <div class="diff add reveal" data-step="2">核验必须独立于 AI<small>保留旧引用再检查 · 开关做对照实验 · 取原始 API 数据</small></div>
+    <div class="diff add reveal" data-step="3">能写成脚本的检查就写成脚本<small>下次改措辞，它还能再报警</small></div>
+    <div class="dim reveal" data-step="4" style="font-size:36px;margin-top:10px">样本只有 18 条，且不是随机抽取，不代表模型的整体错误率。</div>
+  </div>
+  <div class="ev">证据 报告第 6.7、8.6 节</div><div class="pg">7 / 8</div>
+  <aside class="note"><b>8:00–9:00</b> 三句话，最后一行小字一定要说，防止被追问错误率。</aside>
+</section>
+
+<!-- ===== 8 没能核验的 ===== -->
+<section class="slide" data-time="1:00">
+  <div class="gut"></div><div class="ln" style="top:178px">1</div>
+  <div class="hdr"><b>08</b> · 我们没能核验的</div>
+  <div class="main">
+    <div class="diff del nostrike reveal" data-step="1"><span class="t">核对领域类图</span><small>T02：只有源码证据，5 条结论都标「待验证」</small></div>
+    <div class="diff del nostrike reveal" data-step="2"><span class="t">复现 CartPole 末项均值</span><small>T06：原记录 161.3，复跑 485.6，原因未确定，标「需限定」</small></div>
+    <div class="diff del nostrike reveal" data-step="3"><span class="t">独立审批每一次合并</span><small>部分 PR 经管理员合并，复核写在文档里，不在 PR 里</small></div>
+    <div class="lead reveal" data-step="4" style="margin-top:22px"><b>没核验的，就写成「待验证」。</b></div>
+  </div>
+  <div class="ev">证据 <b>C-02-01~05</b> · <b>C-06-05</b> · 报告第 8.5 节</div><div class="pg">8 / 8</div>
+  <aside class="note"><b>9:00–10:00</b> 老实说我们没做到的三件事，每件都已经在仓库里标明。最后一句收尾，谢谢大家。</aside>
+</section>
+
+</main>
+</div>
+<div class="notes" id="notes"></div>
+<div class="hint">← → 翻页 · N 备注 · F 全屏</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   逐条出现 + 键盘/滚轮/触摸翻页 + 演讲者备注
+   =========================================== */
+class SlidePresentation {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.stage = document.getElementById('deckStage');
+    this.notesEl = document.getElementById('notes');
+    this.progress = document.getElementById('progress');
+    this.i = 0;
+    this.start = parseInt(location.hash.slice(1), 10) || 0; /* 先记下请求的页码，show() 会改写 hash */
+    this.setupStageScale();
+    this.setupKeys();
+    this.setupTouch();
+    this.show(0, false);
+  }
+  setupStageScale() {
+    const fit = () => {
+      const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+      const x = (innerWidth - 1920 * k) / 2, y = (innerHeight - 1080 * k) / 2;
+      this.stage.style.transform = `translate(${x}px, ${y}px) scale(${k})`;
+    };
+    fit(); addEventListener('resize', fit);
+  }
+  steps(slide) { return [...slide.querySelectorAll('.reveal')]; }
+  /* 当前页下一个未出现的元素 */
+  pending(slide) {
+    return this.steps(slide).filter(e => !e.classList.contains('on'));
+  }
+  next() {
+    const s = this.slides[this.i];
+    const p = this.pending(s);
+    if (p.length) {
+      const step = p[0].dataset.step;
+      p.filter(e => e.dataset.step === step).forEach(e => e.classList.add('on'));
+    } else if (this.i < this.slides.length - 1) this.show(this.i + 1, false);
+  }
+  prev() {
+    const s = this.slides[this.i];
+    const shown = this.steps(s).filter(e => e.classList.contains('on'));
+    if (shown.length) {
+      const step = shown[shown.length - 1].dataset.step;
+      shown.filter(e => e.dataset.step === step).forEach(e => e.classList.remove('on'));
+    } else if (this.i > 0) this.show(this.i - 1, true);
+  }
+  show(n, showAll) {
+    this.i = Math.max(0, Math.min(n, this.slides.length - 1));
+    this.slides.forEach((s, k) => {
+      s.classList.toggle('active', k === this.i);
+      s.classList.toggle('visible', k === this.i);
+    });
+    const cur = this.slides[this.i];
+    this.steps(cur).forEach(e => e.classList.toggle('on', showAll));
+    this.progress.style.width = ((this.i + 1) / this.slides.length * 100) + '%';
+    const note = cur.querySelector('.note');
+    this.notesEl.innerHTML = note ? `<b>${this.i + 1}/${this.slides.length}</b> ${note.innerHTML}` : '';
+    location.hash = '#' + (this.i + 1);
+  }
+  setupKeys() {
+    addEventListener('keydown', e => {
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); this.next(); }
+      else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.prev(); }
+      else if (e.key === 'Home') this.show(0, false);
+      else if (e.key === 'End') this.show(this.slides.length - 1, true);
+      else if (e.key === 'n' || e.key === 'N') this.notesEl.classList.toggle('show');
+      else if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      else if (e.key === 'a' || e.key === 'A') this.steps(this.slides[this.i]).forEach(x => x.classList.add('on'));
+    });
+    let lock = false;
+    addEventListener('wheel', e => {
+      if (lock || Math.abs(e.deltaY) < 30) return;
+      lock = true; setTimeout(() => lock = false, 450);
+      e.deltaY > 0 ? this.next() : this.prev();
+    }, { passive: true });
+  }
+  setupTouch() {
+    let x0 = null;
+    addEventListener('touchstart', e => x0 = e.touches[0].clientX, { passive: true });
+    addEventListener('touchend', e => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50) dx < 0 ? this.next() : this.prev(); else this.next();
+      x0 = null;
+    }, { passive: true });
+  }
+}
+const deck = new SlidePresentation();
+/* 直接打开某一页：index.html#4；?all 时全部出现，便于截图或导出 */
+(() => {
+  const n = deck.start;
+  const all = /[?&]all\b/.test(location.search);
+  if (n) deck.show(n - 1, all);
+  else if (all) deck.steps(deck.slides[0]).forEach(e => e.classList.add('on'));
+  /* 页内改 hash 时同步跳页（?all 保持全部出现） */
+  addEventListener('hashchange', () => {
+    const m = parseInt(location.hash.slice(1), 10);
+    if (m && m - 1 !== deck.i) deck.show(m - 1, /[?&]all\b/.test(location.search));
+  });
+})();
+</script>
+</body>
+</html>
