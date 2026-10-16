@@ -3,12 +3,12 @@
 
 只读 issue 文件，不联网、不运行上游代码。
 执行（仓库根目录）：python3 -I scripts/issue_07_build_summary.py .
-预期输出：18 ai rows 53 matrix rows（随 issue 文件增减变化）。
+预期输出：19 ai rows 58 matrix rows（随 issue 文件增减变化）。
 结论见 docs/evidence/issues/issue-07.md。
 """
 import re, sys, pathlib
 root = pathlib.Path(sys.argv[1]); ev = root/'docs/evidence'; iss = ev/'issues'
-ISSUES = ['01','03','04','05','06','07','08']
+ISSUES = ['01','02','03','04','05','06','07','08']
 HANDLE = {'成员03':'@langzim','成员01':'@Jaschenn'}
 def fix(s):
     s = s.replace('下方', 'issue-01.md 中的')
@@ -95,7 +95,7 @@ a=['# AI 使用与核验日志','',
 '| 编号 | 提问/PROMPT 摘要 | AI 结论 | 验证方法 | 结果 | 修正后的表述 | 记录人 |','|---|---|---|---|---|---|---|']
 for r in ailog: a.append('| '+' | '.join(cell(fix(x)) for x in r)+' |')
 a+=['','规则：AI 回答是待验证假设，而非引用证据。至少记录一个经实际代码运行证实“AI 错误或条件不充分”的案例。','',
-'注：T02（#2）、T07（#7）暂无独立 AI 记录；有新增后由 T07 负责人补充。','']
+'注：T07（#7）暂无 AI 记录；有新增后由 T07 负责人补充。','']
 (ev/'ai-log.md').write_text('\n'.join(a))
 m=['# 证据矩阵','',
 '由 T07 负责人在各任务 PR 合并后汇总。普通任务 PR 只更新 `issues/issue-<编号>.md`，不编辑本文件。来源编号使用 `C-<Issue号>-<序号>`，例如 `C-05-01`，避免全组冲突。各行保留到原始证据的链接；“测试证据”列写“见该 Issue 文件”表示该文件未单列测试证据，汇总时未另行补充。','',

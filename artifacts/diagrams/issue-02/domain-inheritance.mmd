@@ -1,0 +1,102 @@
+classDiagram
+    direction TB
+    class BaseAlgorithm {
+        <<abstract>>
+        +learn()* 
+        +predict()
+        +save()
+        +load()
+        #_wrap_env()
+        #_setup_learn()
+    }
+    class OnPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class OffPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class PPO {
+        +train()
+        +learn()
+    }
+    class A2C {
+        +train()
+        +learn()
+    }
+    class DQN {
+        +train()
+        +learn()
+        +predict()
+    }
+    class SAC {
+        +train()
+        +learn()
+    }
+    class TD3 {
+        +train()
+        +learn()
+    }
+    class DDPG {
+        +learn()
+    }
+    class BasePolicy {
+        <<abstract>>
+        +predict()
+        #_predict()*
+    }
+    class SACPolicy
+    class TD3Policy
+    class DQNPolicy
+    class ActorCriticPolicy {
+        +forward()
+        +get_distribution()
+        +evaluate_actions()
+        +predict_values()
+        #_predict()
+    }
+    class BaseBuffer {
+        <<abstract>>
+        +add()
+        +reset()
+        +sample()
+    }
+    class RolloutBuffer {
+        +reset()
+        +add()
+        +get()
+    }
+    class ReplayBuffer {
+        +add()
+        +sample()
+    }
+    class VecEnv {
+        <<abstract>>
+        +reset()
+        +step_async()
+        +step_wait()
+        +step()
+    }
+    class DummyVecEnv {
+        +reset()
+        +step_async()
+        +step_wait()
+    }
+    BaseAlgorithm <|-- OnPolicyAlgorithm
+    BaseAlgorithm <|-- OffPolicyAlgorithm
+    OnPolicyAlgorithm <|-- PPO
+    OnPolicyAlgorithm <|-- A2C
+    OffPolicyAlgorithm <|-- DQN
+    OffPolicyAlgorithm <|-- SAC
+    OffPolicyAlgorithm <|-- TD3
+    TD3 <|-- DDPG
+    BasePolicy <|-- ActorCriticPolicy
+    BasePolicy <|-- SACPolicy
+    BasePolicy <|-- TD3Policy
+    BasePolicy <|-- DQNPolicy
+    BaseBuffer <|-- RolloutBuffer
+    BaseBuffer <|-- ReplayBuffer
+    VecEnv <|-- DummyVecEnv
