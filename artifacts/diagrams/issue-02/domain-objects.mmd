@@ -1,41 +1,66 @@
 classDiagram
     direction LR
-    class Env["gymnasium.Env"]
-    class Monitor
-    class VecEnv
-    class DummyVecEnv
-    class BaseAlgorithm
-    class OnPolicyAlgorithm
-    class OffPolicyAlgorithm
-    class PPO
-    class BasePolicy
-    class ActorCriticPolicy
-    class BaseBuffer
+    class Env["gymnasium.Env"] {
+        +reset()
+        +step()
+    }
+    class Monitor {
+        +reset()
+        +step()
+    }
+    class DummyVecEnv {
+        -envs
+        +reset()
+        +step_wait()
+    }
+    class BaseAlgorithm {
+        +env
+        +policy
+        +num_timesteps
+        -_logger
+        +predict()
+    }
+    class OnPolicyAlgorithm {
+        +rollout_buffer
+        +collect_rollouts()
+    }
+    class OffPolicyAlgorithm {
+        +replay_buffer
+    }
+    class ActorCriticPolicy {
+        +action_dist
+        +features_extractor
+        +mlp_extractor
+        +action_net
+        +value_net
+        +optimizer
+    }
     class RolloutBuffer
     class ReplayBuffer
-    class BaseCallback
-    class Logger
-    class Distribution
+    class Distribution {
+        +sample()
+        +mode()
+        +log_prob()
+        +entropy()
+    }
+    class BaseCallback {
+        +init_callback()
+        +on_step()
+        +on_rollout_start()
+        +on_rollout_end()
+    }
+    class Logger {
+        +record()
+        +dump()
+    }
 
-    %% 继承（空心三角）
-    BaseAlgorithm <|-- OnPolicyAlgorithm
-    BaseAlgorithm <|-- OffPolicyAlgorithm
-    OnPolicyAlgorithm <|-- PPO
-    BasePolicy <|-- ActorCriticPolicy
-    BaseBuffer <|-- RolloutBuffer
-    BaseBuffer <|-- ReplayBuffer
-    VecEnv <|-- DummyVecEnv
-
-    %% 持有（实心菱形）
-    BaseAlgorithm *-- VecEnv : env
-    DummyVecEnv *-- Env : envs（经 Monitor 包装）
+    DummyVecEnv *-- Env : envs
+    Monitor ..> Env : 包装
+    BaseAlgorithm o-- DummyVecEnv : env（VecEnv）
+    BaseAlgorithm *-- ActorCriticPolicy : policy（PPO/A2C）
     OnPolicyAlgorithm *-- RolloutBuffer : rollout_buffer
     OffPolicyAlgorithm *-- ReplayBuffer : replay_buffer
-    BaseAlgorithm *-- BasePolicy : policy
     ActorCriticPolicy *-- Distribution : action_dist
     BaseAlgorithm o-- Logger : _logger
-
-    %% 调用/依赖（虚线）
-    Monitor ..> Env : 包装
-    OnPolicyAlgorithm ..> BaseCallback : 回调钩子
+    OnPolicyAlgorithm ..> BaseCallback : 调用钩子
     OnPolicyAlgorithm ..> ActorCriticPolicy : forward / predict_values

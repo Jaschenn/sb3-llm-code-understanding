@@ -4,7 +4,7 @@
 复核人：待指定（需非提交者）
 上游基线：见 [project-baseline.md](../../project-baseline.md)
 
-本文件对应[报告第 3 章](../../report/03-domain-objects.md)。原 PR #15 已关闭未合并；这里重新从固定基线核对。图源：[domain-objects.mmd](../../../artifacts/diagrams/issue-02/domain-objects.mmd)。
+本文件对应[报告第 3 章](../../report/03-domain-objects.md)。原 PR #15 已关闭未合并；这里重新从固定基线核对。图源：[domain-inheritance.mmd](../../../artifacts/diagrams/issue-02/domain-inheritance.mmd)（继承与方法）、[domain-objects.mmd](../../../artifacts/diagrams/issue-02/domain-objects.mmd)（持有、调用与属性）。
 
 ## 可检验结论
 

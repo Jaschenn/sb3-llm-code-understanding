@@ -1,0 +1,71 @@
+classDiagram
+    direction TB
+    class BaseAlgorithm {
+        <<abstract>>
+        +learn()* 
+        +predict()
+        +save()
+        +load()
+        #_wrap_env()
+        #_setup_learn()
+    }
+    class OnPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class OffPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class PPO {
+        +train()
+        +learn()
+    }
+    class BasePolicy {
+        <<abstract>>
+        +predict()
+        #_predict()*
+    }
+    class ActorCriticPolicy {
+        +forward()
+        +get_distribution()
+        +evaluate_actions()
+        +predict_values()
+        #_predict()
+    }
+    class BaseBuffer {
+        <<abstract>>
+        +add()
+        +reset()
+        +sample()
+    }
+    class RolloutBuffer {
+        +reset()
+        +add()
+        +get()
+    }
+    class ReplayBuffer {
+        +add()
+        +sample()
+    }
+    class VecEnv {
+        <<abstract>>
+        +reset()
+        +step_async()
+        +step_wait()
+        +step()
+    }
+    class DummyVecEnv {
+        +reset()
+        +step_async()
+        +step_wait()
+    }
+    BaseAlgorithm <|-- OnPolicyAlgorithm
+    BaseAlgorithm <|-- OffPolicyAlgorithm
+    OnPolicyAlgorithm <|-- PPO
+    BasePolicy <|-- ActorCriticPolicy
+    BaseBuffer <|-- RolloutBuffer
+    BaseBuffer <|-- ReplayBuffer
+    VecEnv <|-- DummyVecEnv

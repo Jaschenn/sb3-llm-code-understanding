@@ -22,29 +22,77 @@
 
 ## 3.2 类图
 
-图中三种关系分开画：**继承**（空心三角）、**持有**（实心菱形，对象作为属性存在）、**调用/依赖**（虚线）。[Mermaid 源文件](../../artifacts/diagrams/issue-02/domain-objects.mmd)。
+分两张图：图 3-1 只画**继承**并列出各类的主要方法，图 3-2 画**持有**与**调用**并列出相关属性。方法和属性只选与本报告主线（PPO 的预测与训练）相关的，不是完整成员列表；`*` 表示必须由子类实现（`@abstractmethod`，或基类中直接 `raise NotImplementedError`，如两个 `train()`），`#` 表示约定的内部方法。成员名已在固定基线上核对（行号见 3.1、3.3），两张图已用 Mermaid 11.4 渲染确认语法正确。
+
+### 图 3-1 继承与主要方法
+
+[Mermaid 源文件](../../artifacts/diagrams/issue-02/domain-inheritance.mmd)
 
 ```mermaid
 classDiagram
-    direction LR
-    class Env["gymnasium.Env"]
-    class Monitor
-    class VecEnv
-    class DummyVecEnv
-    class BaseAlgorithm
-    class OnPolicyAlgorithm
-    class OffPolicyAlgorithm
-    class PPO
-    class BasePolicy
-    class ActorCriticPolicy
-    class BaseBuffer
-    class RolloutBuffer
-    class ReplayBuffer
-    class BaseCallback
-    class Logger
-    class Distribution
-
-    %% 继承（空心三角）
+    direction TB
+    class BaseAlgorithm {
+        <<abstract>>
+        +learn()* 
+        +predict()
+        +save()
+        +load()
+        #_wrap_env()
+        #_setup_learn()
+    }
+    class OnPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class OffPolicyAlgorithm {
+        +learn()
+        +collect_rollouts()
+        +train()*
+    }
+    class PPO {
+        +train()
+        +learn()
+    }
+    class BasePolicy {
+        <<abstract>>
+        +predict()
+        #_predict()*
+    }
+    class ActorCriticPolicy {
+        +forward()
+        +get_distribution()
+        +evaluate_actions()
+        +predict_values()
+        #_predict()
+    }
+    class BaseBuffer {
+        <<abstract>>
+        +add()
+        +reset()
+        +sample()
+    }
+    class RolloutBuffer {
+        +reset()
+        +add()
+        +get()
+    }
+    class ReplayBuffer {
+        +add()
+        +sample()
+    }
+    class VecEnv {
+        <<abstract>>
+        +reset()
+        +step_async()
+        +step_wait()
+        +step()
+    }
+    class DummyVecEnv {
+        +reset()
+        +step_async()
+        +step_wait()
+    }
     BaseAlgorithm <|-- OnPolicyAlgorithm
     BaseAlgorithm <|-- OffPolicyAlgorithm
     OnPolicyAlgorithm <|-- PPO
@@ -52,19 +100,78 @@ classDiagram
     BaseBuffer <|-- RolloutBuffer
     BaseBuffer <|-- ReplayBuffer
     VecEnv <|-- DummyVecEnv
+```
 
-    %% 持有（实心菱形）
-    BaseAlgorithm *-- VecEnv : env
-    DummyVecEnv *-- Env : envs（经 Monitor 包装）
+### 图 3-2 持有、调用与主要属性
+
+实心菱形为持有（对象作为属性），空心菱形为引用外部传入的对象，虚线为调用/依赖。[Mermaid 源文件](../../artifacts/diagrams/issue-02/domain-objects.mmd)
+
+```mermaid
+classDiagram
+    direction LR
+    class Env["gymnasium.Env"] {
+        +reset()
+        +step()
+    }
+    class Monitor {
+        +reset()
+        +step()
+    }
+    class DummyVecEnv {
+        -envs
+        +reset()
+        +step_wait()
+    }
+    class BaseAlgorithm {
+        +env
+        +policy
+        +num_timesteps
+        -_logger
+        +predict()
+    }
+    class OnPolicyAlgorithm {
+        +rollout_buffer
+        +collect_rollouts()
+    }
+    class OffPolicyAlgorithm {
+        +replay_buffer
+    }
+    class ActorCriticPolicy {
+        +action_dist
+        +features_extractor
+        +mlp_extractor
+        +action_net
+        +value_net
+        +optimizer
+    }
+    class RolloutBuffer
+    class ReplayBuffer
+    class Distribution {
+        +sample()
+        +mode()
+        +log_prob()
+        +entropy()
+    }
+    class BaseCallback {
+        +init_callback()
+        +on_step()
+        +on_rollout_start()
+        +on_rollout_end()
+    }
+    class Logger {
+        +record()
+        +dump()
+    }
+
+    DummyVecEnv *-- Env : envs
+    Monitor ..> Env : 包装
+    BaseAlgorithm o-- DummyVecEnv : env（VecEnv）
+    BaseAlgorithm *-- ActorCriticPolicy : policy（PPO/A2C）
     OnPolicyAlgorithm *-- RolloutBuffer : rollout_buffer
     OffPolicyAlgorithm *-- ReplayBuffer : replay_buffer
-    BaseAlgorithm *-- BasePolicy : policy
     ActorCriticPolicy *-- Distribution : action_dist
     BaseAlgorithm o-- Logger : _logger
-
-    %% 调用/依赖（虚线）
-    Monitor ..> Env : 包装
-    OnPolicyAlgorithm ..> BaseCallback : 回调钩子
+    OnPolicyAlgorithm ..> BaseCallback : 调用钩子
     OnPolicyAlgorithm ..> ActorCriticPolicy : forward / predict_values
 ```
 
