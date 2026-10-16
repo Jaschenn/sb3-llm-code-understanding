@@ -1,6 +1,6 @@
 # 3. 核心领域对象与类图
 
-本章回答：SB3 把一个 Gymnasium 环境组织成可训练、可预测的流程时，有哪些核心对象，各自负责什么，彼此是“继承”“持有”还是“调用”。源码均指[固定基线](../project-baseline.md)；证据编号见 [issue-02.md](../evidence/issues/issue-02.md)。限定：这里只分析 on-policy 的 PPO 主线，并列出 off-policy 的对应对象；不分析 HER、Dict 观测之外的变体。
+本章回答：SB3 把一个 Gymnasium 环境组织成可训练、可预测的流程时，有哪些核心对象，各自负责什么，彼此是“继承”“持有”还是“调用”。源码均指[固定基线](../project-baseline.md)；证据编号见 [issue-02.md](../evidence/issues/issue-02.md)。限定：对象职责与持有关系（图 3-2）只以 PPO 主线为例；继承图（图 3-1）包含包内六个算法及其策略类。不分析 HER 和 Dict 观测以外的变体。
 
 ## 3.1 对象职责
 
@@ -22,7 +22,7 @@
 
 ## 3.2 类图
 
-分两张图：图 3-1 只画**继承**并列出各类的主要方法，图 3-2 画**持有**与**调用**并列出相关属性。方法和属性只选与本报告主线（PPO 的预测与训练）相关的，不是完整成员列表；`*` 表示必须由子类实现（`@abstractmethod`，或基类中直接 `raise NotImplementedError`，如两个 `train()`），`#` 表示约定的内部方法。成员名已在固定基线上核对（行号见 3.1、3.3），两张图已用 Mermaid 11.4 渲染确认语法正确。
+分两张图：图 3-1 只画**继承**（含 A2C、DQN、SAC、TD3、DDPG 及其策略类）并列出各类的主要方法，图 3-2 画**持有**与**调用**并列出相关属性。方法和属性只选与本报告主线（PPO 的预测与训练）相关的，不是完整成员列表；`*` 表示必须由子类实现（`@abstractmethod`，或基类中直接 `raise NotImplementedError`，如两个 `train()`），`#` 表示约定的内部方法。成员名已在固定基线上核对（行号见 3.1、3.3），两张图已用 Mermaid 11.4 渲染确认语法正确。
 
 ### 图 3-1 继承与主要方法
 
@@ -54,11 +54,34 @@ classDiagram
         +train()
         +learn()
     }
+    class A2C {
+        +train()
+        +learn()
+    }
+    class DQN {
+        +train()
+        +learn()
+        +predict()
+    }
+    class SAC {
+        +train()
+        +learn()
+    }
+    class TD3 {
+        +train()
+        +learn()
+    }
+    class DDPG {
+        +learn()
+    }
     class BasePolicy {
         <<abstract>>
         +predict()
         #_predict()*
     }
+    class SACPolicy
+    class TD3Policy
+    class DQNPolicy
     class ActorCriticPolicy {
         +forward()
         +get_distribution()
@@ -96,7 +119,15 @@ classDiagram
     BaseAlgorithm <|-- OnPolicyAlgorithm
     BaseAlgorithm <|-- OffPolicyAlgorithm
     OnPolicyAlgorithm <|-- PPO
+    OnPolicyAlgorithm <|-- A2C
+    OffPolicyAlgorithm <|-- DQN
+    OffPolicyAlgorithm <|-- SAC
+    OffPolicyAlgorithm <|-- TD3
+    TD3 <|-- DDPG
     BasePolicy <|-- ActorCriticPolicy
+    BasePolicy <|-- SACPolicy
+    BasePolicy <|-- TD3Policy
+    BasePolicy <|-- DQNPolicy
     BaseBuffer <|-- RolloutBuffer
     BaseBuffer <|-- ReplayBuffer
     VecEnv <|-- DummyVecEnv

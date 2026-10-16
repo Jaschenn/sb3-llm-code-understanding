@@ -23,11 +23,34 @@ classDiagram
         +train()
         +learn()
     }
+    class A2C {
+        +train()
+        +learn()
+    }
+    class DQN {
+        +train()
+        +learn()
+        +predict()
+    }
+    class SAC {
+        +train()
+        +learn()
+    }
+    class TD3 {
+        +train()
+        +learn()
+    }
+    class DDPG {
+        +learn()
+    }
     class BasePolicy {
         <<abstract>>
         +predict()
         #_predict()*
     }
+    class SACPolicy
+    class TD3Policy
+    class DQNPolicy
     class ActorCriticPolicy {
         +forward()
         +get_distribution()
@@ -65,7 +88,15 @@ classDiagram
     BaseAlgorithm <|-- OnPolicyAlgorithm
     BaseAlgorithm <|-- OffPolicyAlgorithm
     OnPolicyAlgorithm <|-- PPO
+    OnPolicyAlgorithm <|-- A2C
+    OffPolicyAlgorithm <|-- DQN
+    OffPolicyAlgorithm <|-- SAC
+    OffPolicyAlgorithm <|-- TD3
+    TD3 <|-- DDPG
     BasePolicy <|-- ActorCriticPolicy
+    BasePolicy <|-- SACPolicy
+    BasePolicy <|-- TD3Policy
+    BasePolicy <|-- DQNPolicy
     BaseBuffer <|-- RolloutBuffer
     BaseBuffer <|-- ReplayBuffer
     VecEnv <|-- DummyVecEnv
