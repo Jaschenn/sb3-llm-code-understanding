@@ -13,3 +13,4 @@
 - `issue_05_env_checker_failures.py`：构造不合法环境并运行 `check_env`；
 - `issue_06_short_training.py`：短 PPO 训练，记录采样/训练阶段；
 - `issue_06_system_info.py`：记录 Python、PyTorch、Gymnasium 与 SB3 版本。
+- `issue_07_build_summary.py`：从各 `issue-*.md` 汇总生成 `ai-log.md` 与 `evidence-matrix.md`。
