@@ -1,0 +1,72 @@
+{
+  "captured_on": "2026-10-16",
+  "method": "GitHub browser viewport screenshots; original pixels retained; slide viewport may crop lower page area",
+  "screenshots": [
+    {
+      "file": "github-repository.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding",
+      "content": "仓库首页及目录",
+      "used_in_current_deck": true
+    },
+    {
+      "file": "github-issue-04.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/issues/4",
+      "content": "任务说明、交付与完成标准",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-issue-04-timeline.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/issues/4#issuecomment-6078712428",
+      "content": "认领、关联 PR 与关闭事件",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-pr-18.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/18",
+      "content": "PR 初始描述与合并状态；后续修订以证据文件为准",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-pr-18-commits.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/18/commits",
+      "content": "初稿、三次证据修订与合并授权记录",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-review-record.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/blob/main/docs/evidence/issues/issue-04.md#复核记录",
+      "content": "仓库文档中的复核问题与修正对照表",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-t03-commits.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/17/commits",
+      "content": "T03 预测证据修订提交",
+      "used_in_current_deck": true
+    },
+    {
+      "file": "github-t05-approved.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/19#pullrequestreview-5492468416",
+      "content": "T05 提交、警告边界修正、批准与合并",
+      "used_in_current_deck": true
+    },
+    {
+      "file": "github-t08-review-comments.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/21#issuecomment-6186390652",
+      "content": "T08 三条具体组员复核意见、修正提交与作者回复",
+      "used_in_current_deck": true
+    },
+    {
+      "file": "github-t08-approved.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/pull/21#pullrequestreview-5530793991",
+      "content": "T08 正式批准和合并；留作备用，不在当前页重复展示",
+      "used_in_current_deck": false
+    },
+    {
+      "file": "github-t06-recheck.jpg",
+      "url": "https://github.com/Jaschenn/sb3-llm-code-understanding/blob/main/docs/evidence/issues/issue-06.md#复核记录",
+      "content": "T06 复跑差异、证据限制及审批例外",
+      "used_in_current_deck": true
+    }
+  ]
+}
